@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useTransition } from "react"
 import { useRouter } from "next/navigation"
 import {
   CaretSortIcon,
@@ -25,6 +25,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover"
+import { switchOrganizationAction } from "@/app/actions/switch-organization"
 
 type PopoverTriggerProps = React.ComponentPropsWithoutRef<typeof PopoverTrigger>
 
@@ -43,9 +44,17 @@ export function OrganizationSwitcher({
   currentOrgId,
 }: OrganizationSwitcherProps) {
   const [open, setOpen] = useState(false)
+  const [isPending, startTransition] = useTransition()
   const router = useRouter()
 
   const organization = organizations.find((org) => org.id === currentOrgId)!
+
+  const handleSwitch = (orgId: string) => {
+    setOpen(false)
+    startTransition(async () => {
+      await switchOrganizationAction(orgId)
+    })
+  }
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
@@ -55,9 +64,11 @@ export function OrganizationSwitcher({
           role="combobox"
           aria-expanded={open}
           aria-label="Select an organization"
+          disabled={isPending}
           className={cn(
             "flex h-12 w-full min-w-[240px] justify-between rounded-xl border border-border bg-field p-2",
-            "hover:border-accent hover:bg-accent/15"
+            "hover:border-accent hover:bg-accent/15",
+            isPending && "opacity-50 cursor-not-allowed"
           )}
         >
           <Avatar className="mr-2 size-8 rounded-sm">
@@ -85,12 +96,7 @@ export function OrganizationSwitcher({
               {organizations.map((org) => (
                 <CommandItem
                   key={org.id}
-                  onSelect={() => {
-                    router.push(
-                      `/auth/login?organization=${org.id}&returnTo=/dashboard`
-                    )
-                    setOpen(false)
-                  }}
+                  onSelect={() => handleSwitch(org.id)}
                   className="text-sm"
                 >
                   <Avatar className="mr-2 size-8 rounded-sm">
@@ -117,8 +123,8 @@ export function OrganizationSwitcher({
             <CommandGroup>
               <CommandItem
                 onSelect={() => {
-                  router.push("/onboarding/create")
                   setOpen(false)
+                  router.push("/onboarding/create")
                 }}
                 className="cursor-pointer"
               >
