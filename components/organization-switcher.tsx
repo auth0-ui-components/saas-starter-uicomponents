@@ -25,7 +25,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover"
-import { switchOrganization } from "@/app/actions/switch-organization"
+import { actionSwitchOrganization } from "@/app/actions/switch-organization"
 
 type PopoverTriggerProps = React.ComponentPropsWithoutRef<typeof PopoverTrigger>
 
@@ -52,7 +52,7 @@ export function OrganizationSwitcher({
   const handleSwitch = (orgId: string) => {
     setOpen(false)
     startTransition(async () => {
-      await switchOrganization(orgId)
+      await actionSwitchOrganization(orgId)
     })
   }
 
@@ -97,7 +97,6 @@ export function OrganizationSwitcher({
                 <CommandItem
                   key={org.id}
                   onSelect={() => handleSwitch(org.id)}
-                  disabled={isPending}
                   className="text-sm"
                 >
                   <Avatar className="mr-2 size-8 rounded-sm">
@@ -128,7 +127,6 @@ export function OrganizationSwitcher({
                   router.push("/onboarding/create")
                 }}
                 className="cursor-pointer"
-                disabled={isPending}
               >
                 <PlusCircledIcon className="mr-2 size-4" />
                 Create Organization

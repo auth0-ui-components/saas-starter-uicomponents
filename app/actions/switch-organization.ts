@@ -2,6 +2,6 @@
 
 import { redirect } from "next/navigation"
 
-export async function switchOrganization(organizationId: string) {
+export async function actionSwitchOrganization(organizationId: string) {
   redirect(`/auth/login?organization=${organizationId}&returnTo=/dashboard`)
 }
