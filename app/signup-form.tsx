@@ -22,12 +22,11 @@ export function SignUpForm() {
 
           const email = formData.get("email")
           if (!email || typeof email !== "string") return
-
+          
           const searchParams = new URLSearchParams({
             login_hint: email,
-            returnTo: '/onboarding/verify'
+            returnTo: "/onboarding/post-auth",
           })
-
           redirect(`/onboarding/signup?${searchParams.toString()}`)
         }}
       >
