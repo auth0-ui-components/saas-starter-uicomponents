@@ -13,7 +13,6 @@ export default function SsoProviderEditPage() {
     router.push("/dashboard/organization/sso")
   }, [router])
 
-
   return (
     <div className="space-y-6 p-6 pt-8">
       <SsoProviderEdit
@@ -24,7 +23,7 @@ export default function SsoProviderEditPage() {
               router.push("/dashboard/organization/sso")
             },
           },
-          deleteFromOrgAction: {
+          deleteFromOrganizationAction: {
             onAfter: () => {
               router.push("/dashboard/organization/sso")
             },

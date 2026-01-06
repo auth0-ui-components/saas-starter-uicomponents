@@ -1,6 +1,6 @@
 "use client"
 
-import { OrgDetailsEdit } from "@auth0/universal-components-react/rwa"
+import { OrganizationDetailsEdit } from "@auth0/universal-components-react/rwa"
 
 import { PageHeader } from "@/components/page-header"
 
@@ -12,9 +12,7 @@ export default function GeneralSettings() {
         description="Update your organization's general settings."
       />
 
-      <OrgDetailsEdit 
-        hideHeader={true}
-      />
+      <OrganizationDetailsEdit hideHeader={true} />
     </div>
   )
 }
