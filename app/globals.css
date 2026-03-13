@@ -1,7 +1,102 @@
 @import 'tailwindcss';
+
+@import '../styles/light.css';
+@import '../styles/dark.css';
 @import '@auth0/universal-components-react/tailwind';
 
 @config "../tailwind.config.ts";
+
+@theme inline {
+  --color-page: var(--color-page);
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+
+  --color-border: var(--border);
+
+  --color-ring: var(--ring);
+
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-destructive-border: var(--color-destructive-border);
+
+  --color-popover: var(--color-popover);
+  --color-popover-foreground: var(--color-popover-foreground);
+
+  --color-input: var(--color-input);
+  --color-input-foreground: var(--color-input-foreground);
+  --color-input-muted: var(--color-input-muted);
+
+  --shadow-bevel-xs: var(--shadow-bevel-xs);
+  --shadow-bevel-sm: var(--shadow-bevel-sm);
+  --shadow-bevel-md: var(--shadow-bevel-md);
+  --shadow-bevel-lg: var(--shadow-bevel-md);
+  --shadow-bevel-xl: var(--shadow-bevel-xl);
+  --shadow-bevel-2xl: var(--shadow-bevel-2xl);
+
+  --shadow-button-resting: var(--shadow-button-resting);
+  --shadow-button-hover: var(--shadow-button-hover);
+  --shadow-button-focus: var(--shadow-button-hover);
+
+  --shadow-button-destructive-resting: var(--shadow-button-destructive-resting);
+  --shadow-button-destructive-hover: var(--shadow-button-destructive-hover);
+  --shadow-button-destructive-focus: var(--shadow-button-destructive-focus);
+
+  --shadow-button-outlined-resting: var(--shadow-button-outlined-resting);
+  --shadow-button-outlined-hover: var(--shadow-button-outlined-resting);
+  --shadow-button-outlined-focus: var(--shadow-button-outlined-resting);
+
+  --shadow-input-resting: var(--shadow-input-resting);
+  --shadow-input-hover: var(--shadow-input-hover);
+  --shadow-input-focus: var(--shadow-input-focus);
+  --shadow-input-destructive-resting: var(--shadow-input-destructive-resting);
+  --shadow-input-destructive-hover: var(--shadow-input-destructive-hover);
+  --shadow-input-destructive-focus: var(--shadow-input-destructive-focus);
+
+  --shadow-checkbox-resting: var(--shadow-checkbox-resting);
+  --shadow-checkbox-hover: var(--shadow-checkbox-hover);
+
+  --shadow-switch-resting: var(--shadow-switch-resting);
+  --shadow-switch-hover: var(--shadow-switch-resting);
+  --shadow-switch-focus: var(--shadow-switch-focus);
+  --shadow-switch-thumb: var(--shadow-switch-thumb);
+
+  /* Status colors */
+  --color-info: var(--color-blue-3);
+  --color-info-foreground: var(--color-blue-9);
+  --color-success: var(--color-green-3);
+  --color-success-foreground: var(--color-green-9);
+  --color-warning: var(--color-yellow-3);
+  --color-warning-foreground: var(--color-yellow-11);
+
+  --radius-xs: var(--radius);
+  --radius-sm: var(--radius);
+  --radius-md: var(--radius);
+  --radius-lg: var(--radius);
+  --radius-xl: var(--radius);
+  --radius-2xl: var(--radius);
+  --radius-3xl: var(--radius);
+  --radius-4xl: var(--radius);
+  --radius-5xl: var(--radius);
+  --radius-6xl: var(--radius);
+  --radius-7xl: var(--radius);
+  --radius-8xl: var(--radius);
+  --radius-9xl: var(--radius);
+}
 
 :root {
   --background: hsl(240 5% 96%);
