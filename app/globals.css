@@ -175,9 +175,3 @@
     @apply bg-background text-foreground;
   }
 }
-
-@layer utilities {
-  [class*="focus-within:ring-"]:focus-within {
-    --tw-ring-shadow: 0 0 0 2px var(--ring);
-  }
-}
