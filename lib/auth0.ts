@@ -57,7 +57,7 @@ export const appClient = new Auth0Client({
   appBaseUrl: process.env.APP_BASE_URL,
   secret: process.env.SESSION_ENCRYPTION_SECRET,
   authorizationParameters: {
-    audience: `https://${process.env.NEXT_PUBLIC_AUTH0_DOMAIN}/my-org/`,
+    audience: process.env.NEXT_PUBLIC_AUTH0_AUDIENCE,
     scope: MY_ORG_SCOPES.join(" "),
   },
   httpTimeout: 20000, // 20 seconds
