@@ -1,7 +1,6 @@
 import Link from "next/link"
 import { redirect } from "next/navigation"
 import { ClientProvider } from "@/providers/client-provider"
-import { Auth0Provider } from "@auth0/nextjs-auth0"
 import { SettingsIcon } from "lucide-react"
 
 import { appClient, managementClient } from "@/lib/auth0"
@@ -30,6 +29,15 @@ export default async function DashboardLayout({
   // if the user does not belong to any organizations, redirect to onboarding
   if (!orgs.length) {
     redirect("/onboarding/create")
+  }
+
+  // if org_id is not in the session, redirect through login with org context so Auth0 sets it in the JWT
+  if (!session.user.org_id) {
+    const params = new URLSearchParams({
+      organization: orgs[0].id!,
+      returnTo: "/dashboard",
+    })
+    redirect(`/auth/login?${params.toString()}`)
   }
 
   return (

@@ -32,6 +32,10 @@ const sidebarNavItems = [
     href: "/dashboard/organization/sso",
   },
   {
+    title: "Applications",
+    href: "/dashboard/organization/applications",
+  },
+  {
     title: "Security Policies",
     href: "/dashboard/organization/security-policies",
   },
