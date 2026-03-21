@@ -8,7 +8,7 @@ interface RouteParams {
 }
 
 // Used only by GET — Auth0 has no single-grant GET endpoint so a scan is unavoidable there.
-// PATCH and DELETE receive client_id from the caller and skip this.
+// PATCH receives client_id from the caller and skips this.
 async function findGrantInOrg(
   grantId: string,
   orgId: string
@@ -105,35 +105,3 @@ export async function PATCH(req: NextRequest, { params }: RouteParams) {
   }
 }
 
-export async function DELETE(req: NextRequest, { params }: RouteParams) {
-  const session = await appClient.getSession()
-  if (!session?.user) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-  }
-
-  const { grant_id } = await params
-  const orgId = session.user.org_id as string
-  const client_id = new URL(req.url).searchParams.get("client_id")
-
-  if (!client_id) {
-    return NextResponse.json({ error: "client_id is required" }, { status: 400 })
-  }
-
-  try {
-    if (!await verifyGrantOwnership(client_id, grant_id, orgId)) {
-      // Idempotent — grant doesn't exist or doesn't belong to this org
-      return new NextResponse(null, { status: 204 })
-    }
-
-    await managementClient.clientGrants.delete({ id: grant_id })
-  } catch (err: unknown) {
-    const apiErr = err as { statusCode?: number }
-    if (apiErr?.statusCode === 404) {
-      return new NextResponse(null, { status: 204 })
-    }
-    console.error("[DELETE /client-grants/:id]", err)
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 })
-  }
-
-  return new NextResponse(null, { status: 204 })
-}
