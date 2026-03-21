@@ -92,9 +92,6 @@ export const grantsApi = {
   create: (body: CreateGrantRequest): Promise<ClientGrant> =>
     apiFetch("/client-grants", { method: "POST", body: JSON.stringify(body) }),
 
-  get: (grantId: string): Promise<ClientGrant> =>
-    apiFetch(`/client-grants/${grantId}`),
-
   patch: (grantId: string, clientId: string, body: PatchGrantRequest): Promise<ClientGrant> =>
     apiFetch(`/client-grants/${grantId}`, { method: "PATCH", body: JSON.stringify({ ...body, client_id: clientId }) }),
 

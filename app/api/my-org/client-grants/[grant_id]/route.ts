@@ -7,72 +7,6 @@ interface RouteParams {
   params: Promise<{ grant_id: string }>
 }
 
-// Used only by GET — Auth0 has no single-grant GET endpoint so a scan is unavoidable there.
-// PATCH receives client_id from the caller and skips this.
-async function findGrantInOrg(
-  grantId: string,
-  orgId: string
-): Promise<ClientGrant | null> {
-  const allClients: Awaited<ReturnType<typeof managementClient.clients.getAll>>["data"] = []
-  let page = 0
-  const PER_PAGE = 100
-  while (true) {
-    const { data } = await managementClient.clients.getAll({
-      per_page: PER_PAGE,
-      page,
-      fields: "client_id,client_metadata",
-      include_fields: true,
-    })
-    allClients.push(...data)
-    if (data.length < PER_PAGE) break
-    page++
-  }
-
-  const orgClientIds = allClients
-    .filter((c) => (c.client_metadata as Record<string, string> | undefined)?.org_id === orgId)
-    .map((c) => c.client_id!)
-
-  for (const clientId of orgClientIds) {
-    const { data: grants } = await managementClient.clientGrants.getAll({ client_id: clientId })
-    const match = grants.find((g) => g.id === grantId)
-    if (match) return match as unknown as ClientGrant
-  }
-
-  return null
-}
-
-async function verifyGrantOwnership(
-  clientId: string,
-  grantId: string,
-  orgId: string
-): Promise<boolean> {
-  const { data: client } = await managementClient.clients.get({ client_id: clientId })
-  const meta = client.client_metadata as Record<string, string> | undefined
-  if (meta?.org_id !== orgId) return false
-
-  const { data: grants } = await managementClient.clientGrants.getAll({ client_id: clientId })
-  return grants.some((g) => g.id === grantId)
-}
-
-export async function GET(_req: NextRequest, { params }: RouteParams) {
-  const session = await appClient.getSession()
-  if (!session?.user) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-  }
-
-  const { grant_id } = await params
-  const orgId = session.user.org_id as string
-
-  try {
-    const grant = await findGrantInOrg(grant_id, orgId)
-    if (!grant) return NextResponse.json({ error: "Not found" }, { status: 404 })
-    return NextResponse.json(grant)
-  } catch (err) {
-    console.error("[GET /client-grants/:id]", err)
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 })
-  }
-}
-
 export async function PATCH(req: NextRequest, { params }: RouteParams) {
   const session = await appClient.getSession()
   if (!session?.user) {
@@ -90,7 +24,14 @@ export async function PATCH(req: NextRequest, { params }: RouteParams) {
   }
 
   try {
-    if (!await verifyGrantOwnership(client_id, grant_id, orgId)) {
+    // Run org check and grant-ownership check in parallel
+    const [{ data: client }, { data: grants }] = await Promise.all([
+      managementClient.clients.get({ client_id }),
+      managementClient.clientGrants.getAll({ client_id }),
+    ])
+
+    const meta = client.client_metadata as Record<string, string> | undefined
+    if (meta?.org_id !== orgId || !grants.some((g) => g.id === grant_id)) {
       return NextResponse.json({ error: "Not found" }, { status: 404 })
     }
 
@@ -104,4 +45,3 @@ export async function PATCH(req: NextRequest, { params }: RouteParams) {
     return NextResponse.json({ error: "Internal server error" }, { status: 500 })
   }
 }
-
