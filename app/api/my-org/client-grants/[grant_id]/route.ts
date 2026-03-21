@@ -24,14 +24,28 @@ export async function PATCH(req: NextRequest, { params }: RouteParams) {
   }
 
   try {
-    // Run org check and grant-ownership check in parallel
-    const [{ data: client }, { data: grants }] = await Promise.all([
+    // Run org check and first page of grants in parallel
+    const [{ data: client }, { data: firstPage }] = await Promise.all([
       managementClient.clients.get({ client_id }),
-      managementClient.clientGrants.getAll({ client_id }),
+      managementClient.clientGrants.getAll({ client_id, per_page: 100, page: 0 }),
     ])
 
     const meta = client.client_metadata as Record<string, string> | undefined
-    if (meta?.org_id !== orgId || !grants.some((g) => g.id === grant_id)) {
+    if (meta?.org_id !== orgId) {
+      return NextResponse.json({ error: "Not found" }, { status: 404 })
+    }
+
+    let grantFound = firstPage.some((g) => g.id === grant_id)
+    let page = 1
+    let current = firstPage
+    while (!grantFound && current.length === 100) {
+      const { data: next } = await managementClient.clientGrants.getAll({ client_id, per_page: 100, page })
+      grantFound = next.some((g) => g.id === grant_id)
+      current = next
+      page++
+    }
+
+    if (!grantFound) {
       return NextResponse.json({ error: "Not found" }, { status: 404 })
     }
 
