@@ -6,6 +6,12 @@ interface RouteParams {
   params: Promise<{ client_id: string }>
 }
 
+/*
+ * Rotates the client secret. The old secret is invalidated immediately — no grace period.
+ * The new secret is returned once in this response and never again; callers must save it immediately.
+ * Warning: this is a breaking operation if the client is actively using the old secret.
+ * For zero-downtime rotation, use Private Key JWT credentials instead.
+ */
 export async function POST(_req: NextRequest, { params }: RouteParams) {
   const session = await appClient.getSession()
   if (!session?.user) {

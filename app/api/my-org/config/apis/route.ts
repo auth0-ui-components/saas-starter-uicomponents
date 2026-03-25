@@ -2,6 +2,10 @@ import { NextResponse } from "next/server"
 
 import { appClient, managementClient } from "@/lib/auth0"
 
+/*
+ * Returns the tenant-admin-configured list of APIs available for partner orgs to create grants against.
+ * Filters out Auth0 system APIs (e.g. Management API) so partners can't request access to internal infrastructure.
+ */
 export async function GET() {
   const session = await appClient.getSession()
   if (!session?.user) {

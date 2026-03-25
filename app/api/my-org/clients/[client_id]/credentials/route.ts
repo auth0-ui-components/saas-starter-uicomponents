@@ -17,6 +17,11 @@ async function verifyOwnership(clientId: string, orgId: string): Promise<boolean
   }
 }
 
+/*
+ * Lists Private Key JWT signing credentials for a client (public key metadata only —
+ * private keys are never stored or returned by Auth0).
+ * Multiple credentials can coexist to support zero-downtime rotation.
+ */
 export async function GET(_req: NextRequest, { params }: RouteParams) {
   const session = await appClient.getSession()
   if (!session?.user) {
@@ -39,6 +44,11 @@ export async function GET(_req: NextRequest, { params }: RouteParams) {
   }
 }
 
+/*
+ * Uploads a new PKJ credential (PEM-format public key or X.509 certificate).
+ * Maps the frontend `algorithm` field to Auth0's `alg` field.
+ * Auth0 automatically extracts the public key and generates a SHA-256 thumbprint from the PEM.
+ */
 export async function POST(req: NextRequest, { params }: RouteParams) {
   const session = await appClient.getSession()
   if (!session?.user) {
