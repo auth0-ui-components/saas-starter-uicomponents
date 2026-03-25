@@ -17,6 +17,9 @@ async function verifyOwnership(clientId: string, orgId: string): Promise<boolean
   }
 }
 
+/*
+ * Returns metadata for a single PKJ credential. Never returns private key material.
+ */
 export async function GET(_req: NextRequest, { params }: RouteParams) {
   const session = await appClient.getSession()
   if (!session?.user) {
@@ -42,6 +45,10 @@ export async function GET(_req: NextRequest, { params }: RouteParams) {
   }
 }
 
+/*
+ * Updates a credential's display name only — the key itself cannot be modified after upload.
+ * To change the key: delete this credential and upload a new one.
+ */
 export async function PATCH(req: NextRequest, { params }: RouteParams) {
   const session = await appClient.getSession()
   if (!session?.user) {
@@ -69,6 +76,10 @@ export async function PATCH(req: NextRequest, { params }: RouteParams) {
   }
 }
 
+/*
+ * Removes a PKJ credential immediately with no grace period.
+ * If this is the last credential on a private_key_jwt client, that client will be unable to authenticate.
+ */
 export async function DELETE(_req: NextRequest, { params }: RouteParams) {
   const session = await appClient.getSession()
   if (!session?.user) {
