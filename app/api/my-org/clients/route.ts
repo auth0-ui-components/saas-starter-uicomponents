@@ -8,6 +8,11 @@ function stripSecret(client: Record<string, unknown>) {
   return rest
 }
 
+/*
+ * Lists all OAuth2 app clients belonging to the authenticated user's org.
+ * Auth0 doesn't support filtering clients by metadata natively, so we paginate all tenant
+ * clients and filter client-side by client_metadata.org_id.
+ */
 export async function GET() {
   const session = await appClient.getSession()
   if (!session?.user) {
@@ -38,6 +43,11 @@ export async function GET() {
   }
 }
 
+/*
+ * Creates a new OAuth2 app client tagged with client_metadata.org_id for org scoping.
+ * Sets is_first_party: false — these are third-party partner apps, not the tenant admin's own apps.
+ * client_secret is returned only in this response and never again.
+ */
 export async function POST(req: NextRequest) {
   const session = await appClient.getSession()
   if (!session?.user) {

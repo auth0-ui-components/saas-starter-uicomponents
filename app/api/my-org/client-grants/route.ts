@@ -3,6 +3,12 @@ import { NextRequest, NextResponse } from "next/server"
 import { appClient, managementClient } from "@/lib/auth0"
 import type { ClientGrant } from "@/types/applications"
 
+/*
+ * Lists API access grants for the org's clients.
+ * Auth0 has no org-scoped grant endpoint, so when no client_id filter is given we enumerate all
+ * org clients then fan out a grants query per client in parallel.
+ * When client_id is provided, ownership is verified and grants are fetched directly (faster path).
+ */
 export async function GET(req: NextRequest) {
   const session = await appClient.getSession()
   if (!session?.user) {
@@ -69,6 +75,12 @@ export async function GET(req: NextRequest) {
   }
 }
 
+/*
+ * Authorizes a client to access a specific API (audience) with a set of scopes.
+ * subject_type is intentionally omitted when calling Auth0 — sending it explicitly causes grants
+ * to be created in a hidden state not visible in the Dashboard. Auth0 infers it from app_type.
+ * Returns 409 if a grant already exists for this client + audience combination.
+ */
 export async function POST(req: NextRequest) {
   const session = await appClient.getSession()
   if (!session?.user) {

@@ -17,6 +17,11 @@ async function verifyOwnership(clientId: string, orgId: string): Promise<boolean
   }
 }
 
+/*
+ * Returns a single client. Verifies org ownership via client_metadata.org_id.
+ * Returns 404 (not 403) for clients not owned by this org to avoid leaking their existence.
+ * client_secret is stripped from the response.
+ */
 export async function GET(_req: NextRequest, { params }: RouteParams) {
   const session = await appClient.getSession()
   if (!session?.user) {
@@ -40,6 +45,12 @@ export async function GET(_req: NextRequest, { params }: RouteParams) {
   }
 }
 
+/*
+ * Updates a client's name, description, or token_endpoint_auth_method.
+ * Handles an Auth0 quirk: switching to/from private_key_jwt requires mutually nulling
+ * token_endpoint_auth_method and client_authentication_methods — sending both causes an error.
+ * When enabling PKJ, verifies at least one public key credential exists first.
+ */
 export async function PATCH(req: NextRequest, { params }: RouteParams) {
   const session = await appClient.getSession()
   if (!session?.user) {
@@ -95,6 +106,9 @@ export async function PATCH(req: NextRequest, { params }: RouteParams) {
   }
 }
 
+/*
+ * Deletes a client after verifying org ownership.
+ */
 export async function DELETE(_req: NextRequest, { params }: RouteParams) {
   const session = await appClient.getSession()
   if (!session?.user) {
