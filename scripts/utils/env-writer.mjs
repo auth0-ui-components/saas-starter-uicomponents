@@ -23,9 +23,9 @@ export async function writeEnvFile(
   try {
     // Build bootstrap-managed configuration
     const envContent = `# Auth0 Configuration (managed by bootstrap script)
-AUTH0_SECRET='${generateRandomSecret()}'
-AUTH0_BASE_URL='http://localhost:3000'
-AUTH0_ISSUER_BASE_URL='https://${domain}'
+SESSION_ENCRYPTION_SECRET='${generateRandomSecret()}'
+APP_BASE_URL='http://localhost:3000'
+NEXT_PUBLIC_AUTH0_DOMAIN='${domain}'
 AUTH0_CLIENT_ID='${dashboardClientId}'
 AUTH0_CLIENT_SECRET='${dashboardClientSecret}'
 
