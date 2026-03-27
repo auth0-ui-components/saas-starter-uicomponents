@@ -26,7 +26,7 @@
   --color-muted: var(--muted);
   --color-muted-foreground: var(--muted-foreground);
 
-  --color-border: var(--border);
+  --color-border: var(--color-border);
 
   --color-ring: var(--ring);
 
@@ -71,7 +71,7 @@
   --shadow-checkbox-hover: var(--shadow-checkbox-hover);
 
   --shadow-switch-resting: var(--shadow-switch-resting);
-  --shadow-switch-hover: var(--shadow-switch-resting);
+  --shadow-switch-hover: var(--shadow-switch-hover);
   --shadow-switch-focus: var(--shadow-switch-focus);
   --shadow-switch-thumb: var(--shadow-switch-thumb);
 
