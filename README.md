@@ -64,13 +64,13 @@ Use this to bootstrap a SaaS application with the following commonly needed capa
 1. Clone this repo to your development environment. To do this, navigate to a directory where you want to work in a terminal program, and run the following command:
 
    ```shell
-   git clone https://github.com/auth0-developer-hub/auth0-b2b-saas-starter.git
+   git clone https://github.com/auth0-ui-components/saas-starter-uicomponents.git
    ```
 
 2. Navigate into the directory by typing the following command:
 
    ```shell
-   cd auth0-b2b-saas-starter
+   cd saas-starter-uicomponents
    ```
 
 3. Install dependencies for the project using your favorite package manager. For example, if you're using npm, check that you're on the correct version of node:
