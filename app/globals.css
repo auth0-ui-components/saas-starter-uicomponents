@@ -175,3 +175,8 @@
     @apply bg-background text-foreground;
   }
 }
+
+/* Fix z-index for auth0 combobox popover inside dialogs */
+[data-radix-popper-content-wrapper] {
+  z-index: 100 !important;
+}
