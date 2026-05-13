@@ -52,6 +52,12 @@ const MANAGEMENT_API_SCOPES = [
   "create:scim_config",
   "update:scim_config",
   "delete:scim_config",
+
+  // MM
+  "read:my_org:member_invitations",
+  "delete:my_org:member_invitations",
+  "create:my_org:member_invitations",
+  "read:my_org:member_roles"
 ]
 
 // ============================================================================
