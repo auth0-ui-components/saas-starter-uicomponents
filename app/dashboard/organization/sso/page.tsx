@@ -3,7 +3,7 @@
 import { useCallback, useMemo } from "react"
 import { useRouter } from "next/navigation"
 import {
-  IdentityProvider,
+  IdpKnownResponse,
   SsoProviderTable,
 } from "@auth0/universal-components-react"
 
@@ -13,7 +13,7 @@ export default function SSO() {
     router.push("/dashboard/organization/sso/create/")
   }, [])
 
-  const handleEdit = useCallback((provider: IdentityProvider): void => {
+  const handleEdit = useCallback((provider: IdpKnownResponse): void => {
     router.push(`/dashboard/organization/sso/edit/${provider.id}`)
   }, [])
 
