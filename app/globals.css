@@ -176,7 +176,15 @@
   }
 }
 
-/* Fix z-index for auth0 combobox popover inside dialogs */
-[data-radix-popper-content-wrapper] {
-  z-index: 100 !important;
+/* Fix auth0 universal components portal container to be above dialogs */
+.auth0-universal {
+  position: fixed !important;
+  top: 0 !important;
+  left: 0 !important;
+  z-index: 9999 !important;
+  pointer-events: none !important;
+}
+
+.auth0-universal > * {
+  pointer-events: auto !important;
 }
