@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation"
 
 import { appClient, managementClient } from "@/lib/auth0"
+import { getDefaultProfile } from "@/lib/app-profile"
 import type { ApiClient } from "@/types/applications"
 
 import { ClientSettings } from "../../components/client-settings"
@@ -19,6 +20,17 @@ export default async function SettingsPage({ params }: SettingsPageProps) {
   if (meta?.org_id !== orgId) redirect("/dashboard/organization/applications")
 
   const domain = process.env.AUTH0_MANAGEMENT_API_DOMAIN ?? ""
+  const profile = getDefaultProfile()
+  const tokenLifetimeConfig = profile.client_configuration.refresh_token?.token_lifetime
+  const allowedTokenLifetimes = typeof tokenLifetimeConfig === "object"
+    ? tokenLifetimeConfig.allowed_values
+    : undefined
 
-  return <ClientSettings client={rawClient as unknown as ApiClient} domain={domain} />
+  return (
+    <ClientSettings
+      client={rawClient as unknown as ApiClient}
+      domain={domain}
+      allowedTokenLifetimes={allowedTokenLifetimes}
+    />
+  )
 }

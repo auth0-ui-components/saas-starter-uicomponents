@@ -39,6 +39,7 @@ export interface ApiClient {
   name: string
   description?: string
   app_type: AppType
+  logo_uri?: string
   token_endpoint_auth_method?: TokenEndpointAuthMethod
   grant_types?: string[]
   callbacks?: string[]
@@ -46,11 +47,16 @@ export interface ApiClient {
   web_origins?: string[]
   allowed_origins?: string[]
   initiate_login_uri?: string
-  organization_usage?: "deny" | "allow" | "require"
-  organization_require_behavior?: "no_prompt" | "pre_login_prompt"
-  mobile?: {
+mobile?: {
     android?: { app_package_name?: string; sha256_cert_fingerprints?: string[] }
     ios?: { team_id?: string; app_bundle_identifier?: string }
+  }
+  refresh_token?: {
+    rotation_type?: string
+    expiration_type?: string
+    token_lifetime?: number
+    idle_token_lifetime?: number
+    leeway?: number
   }
   jwt_configuration?: {
     alg?: string
@@ -121,6 +127,11 @@ export type CreateClientRequest = CreateM2MClientRequest | CreateInteractiveClie
 export interface PatchClientRequest {
   name?: string
   description?: string | null
+  logo_uri?: string
+  callbacks?: string[]
+  web_origins?: string[]
+  allowed_origins?: string[]
+  refresh_token?: { token_lifetime?: number }
   token_endpoint_auth_method?: TokenEndpointAuthMethod
 }
 

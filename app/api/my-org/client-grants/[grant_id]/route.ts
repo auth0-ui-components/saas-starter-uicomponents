@@ -66,3 +66,54 @@ export async function PATCH(req: NextRequest, { params }: RouteParams) {
     return NextResponse.json({ error: "Internal server error" }, { status: 500 })
   }
 }
+
+/*
+ * Revokes a client grant after verifying the grant belongs to an org-owned client.
+ * client_id is required as a query param for ownership verification.
+ */
+export async function DELETE(req: NextRequest, { params }: RouteParams) {
+  const session = await appClient.getSession()
+  if (!session?.user) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+  }
+
+  const { grant_id } = await params
+  const orgId = session.user.org_id as string
+  const client_id = req.nextUrl.searchParams.get("client_id")
+
+  if (!client_id) {
+    return NextResponse.json({ error: "client_id is required" }, { status: 400 })
+  }
+
+  try {
+    const [{ data: client }, { data: firstPage }] = await Promise.all([
+      managementClient.clients.get({ client_id }),
+      managementClient.clientGrants.getAll({ client_id, per_page: 100, page: 0 }),
+    ])
+
+    const meta = client.client_metadata as Record<string, string> | undefined
+    if (meta?.org_id !== orgId) {
+      return NextResponse.json({ error: "Not found" }, { status: 404 })
+    }
+
+    let grantFound = firstPage.some((g) => g.id === grant_id)
+    let page = 1
+    let current = firstPage
+    while (!grantFound && current.length === 100) {
+      const { data: next } = await managementClient.clientGrants.getAll({ client_id, per_page: 100, page })
+      grantFound = next.some((g) => g.id === grant_id)
+      current = next
+      page++
+    }
+
+    if (!grantFound) {
+      return NextResponse.json({ error: "Not found" }, { status: 404 })
+    }
+
+    await managementClient.clientGrants.delete({ id: grant_id })
+    return new NextResponse(null, { status: 204 })
+  } catch (err) {
+    console.error("[DELETE /client-grants/:id]", err)
+    return NextResponse.json({ error: "Internal server error" }, { status: 500 })
+  }
+}
