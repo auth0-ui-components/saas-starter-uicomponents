@@ -57,7 +57,11 @@ const MANAGEMENT_API_SCOPES = [
   "read:my_org:member_invitations",
   "delete:my_org:member_invitations",
   "create:my_org:member_invitations",
-  "read:my_org:member_roles"
+  "read:my_org:member_roles",
+  "delete:my_org:member_roles",
+  "create:my_org:member_roles",
+  "read:my_org:members",
+  "delete:my_org:memberships"
 ]
 
 // ============================================================================

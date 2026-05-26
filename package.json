@@ -10,10 +10,10 @@
     "auth0:bootstrap": "node ./scripts/bootstrap.mjs"
   },
   "dependencies": {
-    "@auth0/myorganization-js": "file:auth0-myorganization-js-1.0.0.tgz",
+    "@auth0/myorganization-js": "file:./auth0-myorganization-js-1.0.1.tgz",
     "@auth0/nextjs-auth0": "^4.12.0",
-    "@auth0/universal-components-core": "file:auth0-universal-components-core-2.0.0.tgz",
-    "@auth0/universal-components-react": "file:auth0-universal-components-react-2.0.0.tgz",
+    "@auth0/universal-components-core": "file:./auth0-universal-components-core-2.0.1.tgz",
+    "@auth0/universal-components-react": "file:./auth0-universal-components-react-2.0.1.tgz",
     "@radix-ui/react-alert-dialog": "^1.0.5",
     "@radix-ui/react-avatar": "^1.0.4",
     "@radix-ui/react-checkbox": "^1.0.4",
@@ -59,5 +59,8 @@
     "prettier-plugin-tailwindcss": "^0.7.1",
     "tailwindcss": "^4.1.17",
     "typescript": "^5.9.2"
+  },
+  "overrides": {
+    "@auth0/myorganization-js": "file:./auth0-myorganization-js-1.0.1.tgz"
   }
 }
