@@ -52,6 +52,22 @@ const MANAGEMENT_API_SCOPES = [
   "create:scim_config",
   "update:scim_config",
   "delete:scim_config",
+  // Application Management
+  "read:clients",
+  "create:clients",
+  "update:clients",
+  "delete:clients",
+  "read:client_keys",
+  "update:client_keys",
+  "read:client_credentials",
+  "create:client_credentials",
+  "update:client_credentials",
+  "delete:client_credentials",
+  "read:client_grants",
+  "create:client_grants",
+  "update:client_grants",
+  "delete:client_grants",
+  "read:resource_servers",
 ]
 
 // ============================================================================
