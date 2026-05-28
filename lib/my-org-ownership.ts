@@ -26,7 +26,7 @@ export async function verifyGrantOwnership(
   let grantFound = firstPage.some((g) => g.id === grantId)
   let page = 1
   let current = firstPage
-  while (!grantFound && current.length === 100) {
+  while (!grantFound && current.length === 100 && page < 50) {
     const { data: next } = await managementClient.clientGrants.getAll({ client_id: clientId, per_page: 100, page })
     grantFound = next.some((g) => g.id === grantId)
     current = next

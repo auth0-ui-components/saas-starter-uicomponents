@@ -12,7 +12,8 @@ interface CredentialsPageProps {
 export default async function CredentialsPage({ params }: CredentialsPageProps) {
   const { client_id } = await params
   const session = await appClient.getSession()
-  const orgId = session!.user.org_id as string
+  if (!session?.user?.org_id) redirect("/auth/login")
+  const orgId = session.user.org_id as string
 
   const { data: rawClient } = await managementClient.clients.get({ client_id })
   const meta = rawClient.client_metadata as Record<string, string> | undefined
@@ -26,8 +27,11 @@ export default async function CredentialsPage({ params }: CredentialsPageProps) 
   try {
     const { data } = await managementClient.clients.getCredentials({ client_id })
     credentials = data as unknown as ClientCredential[]
-  } catch {
-    // Non-PKJ clients return empty or error — safe to ignore
+  } catch (err: unknown) {
+    const apiErr = err as { statusCode?: number }
+    if (apiErr?.statusCode && apiErr.statusCode >= 500) {
+      throw new Error("Failed to load credentials")
+    }
   }
 
   return (

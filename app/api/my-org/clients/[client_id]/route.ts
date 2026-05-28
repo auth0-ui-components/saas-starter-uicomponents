@@ -60,9 +60,10 @@ export async function PATCH(req: NextRequest, { params }: RouteParams) {
   // Auth0 requires mutual nulling when switching between token_endpoint_auth_method and client_authentication_methods
   let updateBody = { ...body }
   if (body.token_endpoint_auth_method === "private_key_jwt") {
-    const { token_endpoint_auth_method: _, ...rest } = body
-    const { data: existingCreds } = await managementClient.clients.getCredentials({ client_id })
-    const credIds = (existingCreds || []).map((c: { id: string }) => ({ id: c.id }))
+    const { token_endpoint_auth_method: _, credential_ids, ...rest } = body
+    const credIds: { id: string }[] = credential_ids?.length
+      ? credential_ids.map((id: string) => ({ id }))
+      : (await managementClient.clients.getCredentials({ client_id })).data.map((c: { id: string }) => ({ id: c.id }))
     if (credIds.length === 0) {
       return NextResponse.json(
         { error: "Add a public key credential before enabling Private Key JWT authentication." },
@@ -72,7 +73,8 @@ export async function PATCH(req: NextRequest, { params }: RouteParams) {
     updateBody = { ...rest, token_endpoint_auth_method: null, jwt_configuration: { alg: "RS256" }, client_authentication_methods: { private_key_jwt: { credentials: credIds } } }
   } else if (body.token_endpoint_auth_method) {
     // Switching away from PKJ — must null out client_authentication_methods
-    updateBody = { ...body, client_authentication_methods: null }
+    const { credential_ids: _, ...rest } = body
+    updateBody = { ...rest, client_authentication_methods: null }
   }
 
   try {

@@ -13,7 +13,8 @@ interface ApisPageProps {
 export default async function ApisPage({ params }: ApisPageProps) {
   const { client_id } = await params
   const session = await appClient.getSession()
-  const orgId = session!.user.org_id as string
+  if (!session?.user?.org_id) redirect("/auth/login")
+  const orgId = session.user.org_id as string
 
   const { data: rawClient } = await managementClient.clients.get({ client_id })
   const meta = rawClient.client_metadata as Record<string, string> | undefined

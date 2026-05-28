@@ -26,11 +26,15 @@ export async function GET() {
     const allClients: Awaited<ReturnType<typeof managementClient.clients.getAll>>["data"] = []
     let page = 0
     const PER_PAGE = 100
-    while (true) {
+    const MAX_PAGES = 50
+    while (page < MAX_PAGES) {
       const { data } = await managementClient.clients.getAll({ per_page: PER_PAGE, page })
       allClients.push(...data)
       if (data.length < PER_PAGE) break
       page++
+    }
+    if (page >= MAX_PAGES) {
+      console.warn("[GET /clients] Hit pagination ceiling of %d pages", MAX_PAGES)
     }
 
     const orgClients = allClients
