@@ -1,20 +1,11 @@
 import { NextRequest, NextResponse } from "next/server"
 
 import { appClient, managementClient } from "@/lib/auth0"
+import { verifyClientOwnership } from "@/lib/my-org-ownership"
 import type { ApiClient } from "@/types/applications"
 
 interface RouteParams {
   params: Promise<{ client_id: string }>
-}
-
-async function verifyOwnership(clientId: string, orgId: string): Promise<boolean> {
-  try {
-    const { data: client } = await managementClient.clients.get({ client_id: clientId })
-    const meta = client.client_metadata as Record<string, string> | undefined
-    return meta?.org_id === orgId
-  } catch {
-    return false
-  }
 }
 
 /*
@@ -31,7 +22,7 @@ export async function GET(_req: NextRequest, { params }: RouteParams) {
   const { client_id } = await params
   const orgId = session.user.org_id as string
 
-  if (!(await verifyOwnership(client_id, orgId))) {
+  if (!(await verifyClientOwnership(client_id, orgId))) {
     return NextResponse.json({ error: "Not found" }, { status: 404 })
   }
 
@@ -60,7 +51,7 @@ export async function PATCH(req: NextRequest, { params }: RouteParams) {
   const { client_id } = await params
   const orgId = session.user.org_id as string
 
-  if (!(await verifyOwnership(client_id, orgId))) {
+  if (!(await verifyClientOwnership(client_id, orgId))) {
     return NextResponse.json({ error: "Not found" }, { status: 404 })
   }
 
@@ -118,7 +109,7 @@ export async function DELETE(_req: NextRequest, { params }: RouteParams) {
   const { client_id } = await params
   const orgId = session.user.org_id as string
 
-  if (!(await verifyOwnership(client_id, orgId))) {
+  if (!(await verifyClientOwnership(client_id, orgId))) {
     return NextResponse.json({ error: "Not found" }, { status: 404 })
   }
 
