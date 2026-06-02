@@ -20,6 +20,7 @@ export const onboardingClient = new Auth0Client({
   },
   authorizationParameters: {
     screen_hint: "signup",
+    "x-experiment": "devportal"
   },
 })
 
@@ -57,7 +58,7 @@ export const appClient = new Auth0Client({
   appBaseUrl: process.env.APP_BASE_URL,
   secret: process.env.SESSION_ENCRYPTION_SECRET,
   authorizationParameters: {
-    audience: process.env.NEXT_PUBLIC_AUTH0_AUDIENCE,
+    audience: process.env.NEXT_PUBLIC_AUTH0_AUDIENCE || `https://${process.env.NEXT_PUBLIC_AUTH0_DOMAIN}/my-org/`,
     scope: MY_ORG_SCOPES.join(" "),
   },
   httpTimeout: 20000, // 20 seconds

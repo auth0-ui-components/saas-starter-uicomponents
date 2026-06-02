@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 
 import { appClient, managementClient } from "@/lib/auth0"
+import { getDefaultProfile } from "@/lib/app-profile"
 import type { ApiClient } from "@/types/applications"
 
 function stripSecret(client: Record<string, unknown>) {
@@ -25,11 +26,15 @@ export async function GET() {
     const allClients: Awaited<ReturnType<typeof managementClient.clients.getAll>>["data"] = []
     let page = 0
     const PER_PAGE = 100
-    while (true) {
+    const MAX_PAGES = 50
+    while (page < MAX_PAGES) {
       const { data } = await managementClient.clients.getAll({ per_page: PER_PAGE, page })
       allClients.push(...data)
       if (data.length < PER_PAGE) break
       page++
+    }
+    if (page >= MAX_PAGES) {
+      console.warn("[GET /clients] Hit pagination ceiling of %d pages", MAX_PAGES)
     }
 
     const orgClients = allClients
@@ -58,11 +63,46 @@ export async function POST(req: NextRequest) {
   const body = await req.json()
 
   try {
+    const profile = getDefaultProfile()
+    const { client_configuration, is_first_party } = profile
+
     const { data: created } = await managementClient.clients.create({
       ...body,
       client_metadata: { org_id: orgId },
-      is_first_party: false,
+      is_first_party: is_first_party.default,
+      ...(client_configuration.oidc_conformant !== undefined && {
+        oidc_conformant: client_configuration.oidc_conformant,
+      }),
+      ...(client_configuration.grant_types && {
+        grant_types: client_configuration.grant_types,
+      }),
+...(client_configuration.refresh_token && {
+        refresh_token: {
+          ...client_configuration.refresh_token,
+          token_lifetime:
+            typeof client_configuration.refresh_token.token_lifetime === "object"
+              ? client_configuration.refresh_token.token_lifetime.default
+              : client_configuration.refresh_token.token_lifetime,
+        },
+      }),
+      ...(client_configuration.require_proof_of_possession !== undefined && {
+        require_proof_of_possession: client_configuration.require_proof_of_possession,
+      }),
     })
+
+    const resourceServers = profile.client_grant_configuration.resource_servers
+    if (resourceServers.length > 0) {
+      await Promise.all(
+        resourceServers.map((rs) =>
+          managementClient.clientGrants.create({
+            client_id: created.client_id!,
+            audience: rs.identifier,
+            scope: rs.scopes ?? [],
+            subject_type: rs.subject_type ?? "user",
+          } as Parameters<typeof managementClient.clientGrants.create>[0])
+        )
+      )
+    }
 
     return NextResponse.json(created as unknown as ApiClient, { status: 201 })
   } catch (err: unknown) {

@@ -1,0 +1,48 @@
+{
+  "profiles": [
+    {
+      "client_profile_id": "cpr_AbCdEf123456789",
+      "name": "Third Party Applications",
+      "description": "System profile for all dynamically created third-party applications",
+      "profile_type": "system",
+      "is_first_party": {
+        "default": false
+      },
+      "app_type": {
+        "default": "regular_web",
+        "allowed_values": ["native", "regular_web", "spa"]
+      },
+      "client_configuration": {
+        "oidc_conformant": true,
+        "grant_types": ["authorization_code", "refresh_token"],
+        "refresh_token": {
+          "rotation_type": "rotating",
+          "expiration_type": "expiring",
+          "token_lifetime": {
+            "default": 2592000,
+            "allowed_values": [2000000, 10000000]
+          },
+          "idle_token_lifetime": 1296000,
+          "leeway": 0
+        },
+        "require_proof_of_possession": false
+      },
+      "client_grant_configuration": {
+        "resource_servers": [
+          {
+            "identifier": "urn:saas:api",
+            "allow_offline_access": false,
+            "subject_type": "user",
+            "scopes": ["read:data", "write:data"]
+          },
+          {
+            "identifier": "https://fourcorners.com/",
+            "allow_offline_access": false,
+            "subject_type": "user",
+            "scopes": ["read:maps", "write:events", "read:events", "write:reviews", "read:reviews"]
+          }
+        ]
+      }
+    }
+  ]
+}

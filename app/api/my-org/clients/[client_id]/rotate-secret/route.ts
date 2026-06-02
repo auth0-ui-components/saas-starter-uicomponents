@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 
 import { appClient, managementClient } from "@/lib/auth0"
+import { verifyClientOwnership } from "@/lib/my-org-ownership"
 
 interface RouteParams {
   params: Promise<{ client_id: string }>
@@ -21,14 +22,7 @@ export async function POST(_req: NextRequest, { params }: RouteParams) {
   const { client_id } = await params
   const orgId = session.user.org_id as string
 
-  // Verify ownership
-  try {
-    const { data: client } = await managementClient.clients.get({ client_id })
-    const meta = client.client_metadata as Record<string, string> | undefined
-    if (meta?.org_id !== orgId) {
-      return NextResponse.json({ error: "Not found" }, { status: 404 })
-    }
-  } catch {
+  if (!(await verifyClientOwnership(client_id, orgId))) {
     return NextResponse.json({ error: "Not found" }, { status: 404 })
   }
 

@@ -38,7 +38,8 @@ export async function GET(req: NextRequest) {
     const allClients: Awaited<ReturnType<typeof managementClient.clients.getAll>>["data"] = []
     let page = 0
     const PER_PAGE = 100
-    while (true) {
+    const MAX_PAGES = 50
+    while (page < MAX_PAGES) {
       const { data } = await managementClient.clients.getAll({
         per_page: PER_PAGE,
         page,
@@ -58,16 +59,22 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ grants: [] })
     }
 
-    const grantsArrays = await Promise.all(
-      orgClientIds.map(async (cid) => {
-        const params: { client_id: string; audience?: string } = { client_id: cid }
-        if (filterAudience) params.audience = filterAudience
-        const { data } = await managementClient.clientGrants.getAll(params)
-        return data
-      })
-    )
+    // Batch grant fetches in chunks of 5 to avoid rate limits
+    const BATCH_SIZE = 5
+    const grants: ClientGrant[] = []
+    for (let i = 0; i < orgClientIds.length; i += BATCH_SIZE) {
+      const batch = orgClientIds.slice(i, i + BATCH_SIZE)
+      const results = await Promise.all(
+        batch.map(async (cid) => {
+          const params: { client_id: string; audience?: string } = { client_id: cid }
+          if (filterAudience) params.audience = filterAudience
+          const { data } = await managementClient.clientGrants.getAll(params)
+          return data
+        })
+      )
+      grants.push(...(results.flat() as unknown as ClientGrant[]))
+    }
 
-    const grants = grantsArrays.flat() as unknown as ClientGrant[]
     return NextResponse.json({ grants })
   } catch (err) {
     console.error("[GET /client-grants]", err)

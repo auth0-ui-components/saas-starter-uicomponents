@@ -36,12 +36,15 @@ const APP_TYPES = [
   },
 ]
 
-export function CreateClientForm() {
+interface CreateClientFormProps {
+  allowedAppTypes?: string[]
+}
+
+export function CreateClientForm({ allowedAppTypes }: CreateClientFormProps) {
   const router = useRouter()
   const [selectedType, setSelectedType] = useState<AppType | null>(null)
   const [name, setName] = useState("")
   const [description, setDescription] = useState("")
-  const [callbacks, setCallbacks] = useState("")
   const [loading, setLoading] = useState(false)
 
   async function handleSubmit(e: React.FormEvent) {
@@ -50,16 +53,10 @@ export function CreateClientForm() {
 
     setLoading(true)
     try {
-      const callbackList = callbacks
-        .split("\n")
-        .map((s) => s.trim())
-        .filter(Boolean)
-
       const createReq: CreateInteractiveClientRequest = {
         name: name.trim(),
         description: description.trim() || undefined,
         app_type: selectedType,
-        callbacks: callbackList.length ? callbackList : undefined,
       }
 
       const created: ApiClientWithSecret = await clientsApi.create(createReq)
@@ -95,7 +92,7 @@ export function CreateClientForm() {
               Choose an application type
             </p>
             <div className="grid grid-cols-2 lg:grid-cols-3 gap-3">
-              {APP_TYPES.map((appTypeOption) => (
+              {APP_TYPES.filter((t) => !allowedAppTypes || allowedAppTypes.includes(t.type)).map((appTypeOption) => (
                 <button
                   key={appTypeOption.type}
                   type="button"
@@ -145,19 +142,6 @@ export function CreateClientForm() {
                     value={description}
                     onChange={(e) => setDescription(e.target.value)}
                     maxLength={512}
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="app-callbacks">
-                    Callback URLs (one per line, optional)
-                  </Label>
-                  <textarea
-                    id="app-callbacks"
-                    value={callbacks}
-                    onChange={(e) => setCallbacks(e.target.value)}
-                    rows={3}
-                    className="w-full rounded-md border bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                   />
                 </div>
 
