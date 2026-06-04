@@ -218,6 +218,12 @@ Users can be invited to a company organization, but can also create their own ho
 
 Your users can set their own user profile settings, set and reset their own passwords, and manage their own multi-factor authentication (MFA) enrollments. They can also manage and delete their own account data.
 
+### Application Management
+
+External developers and partners can self-service create OAuth2 clients, manage credentials (secret rotation, private key JWT), and configure scoped API access — all within their organization boundary. Configuration is driven by `config/app-profiles.json`, which controls allowed app types, token policies, and available APIs/scopes.
+
+See [APPLICATION_MANAGEMENT.md](APPLICATION_MANAGEMENT.md) for the full setup guide.
+
 ---
 
 ## Advanced Topics
