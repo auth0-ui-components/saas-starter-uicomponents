@@ -52,16 +52,6 @@ const MANAGEMENT_API_SCOPES = [
   "create:scim_config",
   "update:scim_config",
   "delete:scim_config",
-
-  // MM
-  "read:my_org:member_invitations",
-  "delete:my_org:member_invitations",
-  "create:my_org:member_invitations",
-  "read:my_org:member_roles",
-  "delete:my_org:member_roles",
-  "create:my_org:member_roles",
-  "read:my_org:members",
-  "delete:my_org:memberships"
 ]
 
 // ============================================================================
@@ -227,7 +217,9 @@ export async function checkDashboardClientChanges(
     clientToCheck.my_organization_configuration.connection_profile_id !==
       connectionProfileId ||
     clientToCheck.my_organization_configuration.user_attribute_profile_id !==
-      userAttributeProfileId
+      userAttributeProfileId ||
+    clientToCheck.my_organization_configuration.invitation_landing_client_id !==
+      clientToCheck.client_id
 
   const organizationSettingsNeedUpdate =
     clientToCheck.organization_require_behavior !== "post_login_prompt" ||
@@ -542,6 +534,25 @@ export async function applyDashboardClientChanges(
       const { stdout } = await $`auth0 ${createClientArgs}`
       const client = JSON.parse(stdout)
 
+      // Update the client to set invitation_landing_client_id to itself
+      await auth0ApiCall("patch", `clients/${client.client_id}`, {
+        my_organization_configuration: {
+          connection_profile_id: connectionProfileId,
+          user_attribute_profile_id: userAttributeProfileId,
+          connection_deletion_behavior: "allow_if_empty",
+          invitation_landing_client_id: client.client_id,
+          allowed_strategies: [
+            "pingfederate",
+            "adfs",
+            "waad",
+            "google-apps",
+            "okta",
+            "oidc",
+            "samlp",
+          ],
+        },
+      })
+
       // Fetch full client details including client_secret
       const { stdout: fullClientStdout } =
         await $`auth0 api get clients/${client.client_id}?fields=client_id,name,client_secret,app_type,callbacks,allowed_logout_urls,my_organization_configuration,organization_require_behavior,organization_usage`
@@ -592,6 +603,7 @@ export async function applyDashboardClientChanges(
           connection_profile_id: connectionProfileId,
           user_attribute_profile_id: userAttributeProfileId,
           connection_deletion_behavior: "allow_if_empty",
+          invitation_landing_client_id: existing.client_id,
           allowed_strategies: [
             "pingfederate",
             "adfs",
