@@ -1,6 +1,7 @@
 import { $, execaSync } from "execa"
 import ora from "ora"
 
+import { isSessionValid } from "./auth0-api.mjs"
 import { confirmWithUser } from "./helpers.mjs"
 
 // Timeout for CLI commands (15 seconds)
@@ -75,6 +76,52 @@ export async function checkAuth0CLI() {
     )
     process.exit(1)
   }
+}
+
+/**
+ * Validate Auth0 CLI session and offer to login if expired
+ * @returns {Promise<void>}
+ */
+export async function validateAuth0Session() {
+  const spinner = ora({
+    text: `Validating Auth0 CLI session`,
+  }).start()
+
+  const sessionValid = await isSessionValid()
+
+  if (sessionValid) {
+    spinner.succeed("Auth0 CLI session is valid")
+    return
+  }
+
+  spinner.warn("Auth0 CLI session appears to be expired or invalid")
+
+  const shouldLogin = await confirmWithUser(
+    "Would you like to login to Auth0 CLI now?"
+  )
+
+  if (!shouldLogin) {
+    console.error("\n❌ Cannot proceed without a valid Auth0 CLI session.")
+    console.error("   Please run 'auth0 login' manually and try again.\n")
+    process.exit(1)
+  }
+
+  const loginSuccess = await runAuth0Login()
+
+  if (!loginSuccess) {
+    console.error("\n❌ Login was not successful. Please try again.\n")
+    process.exit(1)
+  }
+
+  // Verify the session is now valid
+  const postLoginValid = await isSessionValid()
+  if (!postLoginValid) {
+    console.error("\n❌ Session validation failed after login.")
+    console.error("   Please check your Auth0 CLI configuration and try again.\n")
+    process.exit(1)
+  }
+
+  console.log("\n✅ Successfully logged in to Auth0 CLI\n")
 }
 
 /**
