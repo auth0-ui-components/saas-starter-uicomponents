@@ -1,6 +1,8 @@
 import { existsSync, readFileSync, writeFileSync } from "fs"
 import ora from "ora"
 
+import { CUSTOM_CLAIMS_NAMESPACE } from "./actions.mjs"
+
 /**
  * Write .env.local file with all required environment variables
  * Merges with .env.local.user if it exists
@@ -46,6 +48,9 @@ AUTH0_MEMBER_ROLE_ID='${memberRoleId}'
 
 # Database Connection Configuration
 DEFAULT_CONNECTION_ID='${connectionId}'
+
+# The namespace used to prefix custom claims (e.g., https://example.com)
+CUSTOM_CLAIMS_NAMESPACE='${CUSTOM_CLAIMS_NAMESPACE}'
 `
 
     // Check if .env.local.user exists and merge it
