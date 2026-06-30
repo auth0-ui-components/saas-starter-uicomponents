@@ -30,14 +30,14 @@ export async function auth0ApiCall(method, endpoint, data = null, timeout = DEFA
 }
 
 /**
- * Check if the Auth0 CLI session is valid by making a simple CLI call
- * Uses `tenants list` which doesn't require any special scopes
+ * Check if the Auth0 CLI session is valid by making a simple API call
+ * Uses `read:clients` scope which is in BOOTSTRAP_SCOPES
  * @param {number} timeout - Timeout in ms (default 10s for quick check)
  * @returns {Promise<boolean>} True if session is valid
  */
 export async function isSessionValid(timeout = 10000) {
   try {
-    await $({ timeout })`auth0 tenants list --csv --no-input`
+    await $({ timeout })`auth0 api get clients?per_page=1 --no-input`
     return true
   } catch (e) {
     return false
