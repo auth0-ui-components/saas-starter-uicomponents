@@ -9,11 +9,16 @@ import {
 } from "./actions.mjs"
 import { auth0ApiCall } from "./auth0-api.mjs"
 import { checkBrandingChanges } from "./branding.mjs"
-import { createChangePlan } from "./change-plan.mjs"
+import {
+  ChangeAction,
+  createChangeItem,
+  createChangePlan,
+} from "./change-plan.mjs"
 import {
   checkDashboardClientChanges,
   checkManagementClientChanges,
   checkManagementClientGrantChanges,
+  checkMyAccountClientGrantChanges,
   checkMyOrgClientGrantChanges,
 } from "./clients.mjs"
 import {
@@ -22,7 +27,9 @@ import {
 } from "./connections.mjs"
 import { checkUserAttributeProfileChanges } from "./profiles.mjs"
 import {
+  checkMyAccountResourceServerChanges,
   checkMyOrgResourceServerChanges,
+  getAvailableMyAccountScopes,
   MYORG_API_SCOPES,
 } from "./resource-servers.mjs"
 import { checkAdminRoleChanges, checkMemberRoleChanges } from "./roles.mjs"
@@ -92,6 +99,14 @@ export async function discoverExistingResources(domain) {
     spinner.succeed("Resource discovery complete")
     return resources
   } catch (e) {
+    // Handle timeout errors with a helpful message
+    if (e.timedOut) {
+      spinner.fail("Resource discovery timed out")
+      console.error("\n❌ The Auth0 CLI is not responding.")
+      console.error("   This usually means your session has expired.")
+      console.error("   Please run 'auth0 login' and try again.\n")
+      process.exit(1)
+    }
     spinner.fail("Failed to discover existing resources")
     console.error(e)
     process.exit(1)
@@ -100,14 +115,28 @@ export async function discoverExistingResources(domain) {
 
 /**
  * Check all resources and build comprehensive change plan
+ * @param {object} resources - Discovered resources from the tenant
+ * @param {string} domain - The tenant domain
+ * @param {object} featureConfig - Feature configuration { enableMyOrg, enableMyAccount }
  */
-export async function buildChangePlan(resources, domain) {
+export async function buildChangePlan(
+  resources,
+  domain,
+  featureConfig = { enableMyOrg: true, enableMyAccount: true }
+) {
   const spinner = ora({
     text: `Analyzing required changes`,
   }).start()
 
   try {
-    const plan = createChangePlan()
+    const plan = createChangePlan(featureConfig)
+
+    // Get available My Account API scopes from the tenant (only if MyAccount enabled)
+    const myAccountApiScopes = featureConfig.enableMyAccount
+      ? getAvailableMyAccountScopes(resources.resourceServers, domain)
+      : []
+    // Store scopes in plan for later use during apply phase
+    plan.myAccountApiScopes = myAccountApiScopes
 
     // Profiles (needed first for Dashboard Client)
     plan.connectionProfile = checkConnectionProfileChanges(
@@ -130,7 +159,11 @@ export async function buildChangePlan(resources, domain) {
     plan.clients.dashboard = await checkDashboardClientChanges(
       resources.clients,
       connectionProfileId,
-      userAttributeProfileId
+      userAttributeProfileId,
+      domain,
+      featureConfig.enableMyOrg ? MYORG_API_SCOPES : [],
+      myAccountApiScopes,
+      featureConfig
     )
 
     // Get client IDs (either existing or will be created)
@@ -146,19 +179,60 @@ export async function buildChangePlan(resources, domain) {
       domain
     )
 
-    // Resource Server
-    plan.resourceServer = checkMyOrgResourceServerChanges(
-      resources.resourceServers,
-      domain
-    )
+    // Resource Servers - conditionally check based on feature config
+    if (featureConfig.enableMyOrg) {
+      plan.resourceServer = checkMyOrgResourceServerChanges(
+        resources.resourceServers,
+        domain
+      )
+    } else {
+      plan.resourceServer = createChangeItem(ChangeAction.SKIP, {
+        resource: "My Organization API",
+        reason: "Organization Management feature disabled",
+      })
+    }
 
-    // My Org Client Grant (Dashboard to My Org API)
-    plan.clientGrants.myOrg = checkMyOrgClientGrantChanges(
-      dashboardClientId,
-      resources.clientGrants,
-      domain,
-      MYORG_API_SCOPES
-    )
+    if (featureConfig.enableMyAccount) {
+      plan.myAccountResourceServer = checkMyAccountResourceServerChanges(
+        resources.resourceServers,
+        domain
+      )
+    } else {
+      plan.myAccountResourceServer = createChangeItem(ChangeAction.SKIP, {
+        resource: "My Account API",
+        reason: "User Self-Service feature disabled",
+      })
+    }
+
+    // My Org Client Grant (Dashboard to My Org API) - only if MyOrg enabled
+    if (featureConfig.enableMyOrg) {
+      plan.clientGrants.myOrg = checkMyOrgClientGrantChanges(
+        dashboardClientId,
+        resources.clientGrants,
+        domain,
+        MYORG_API_SCOPES
+      )
+    } else {
+      plan.clientGrants.myOrg = createChangeItem(ChangeAction.SKIP, {
+        resource: "My Org API Client Grant",
+        reason: "Organization Management feature disabled",
+      })
+    }
+
+    // My Account Client Grant (Dashboard to My Account API) - only if MyAccount enabled
+    if (featureConfig.enableMyAccount) {
+      plan.clientGrants.myAccount = checkMyAccountClientGrantChanges(
+        dashboardClientId,
+        resources.clientGrants,
+        domain,
+        myAccountApiScopes
+      )
+    } else {
+      plan.clientGrants.myAccount = createChangeItem(ChangeAction.SKIP, {
+        resource: "My Account API Client Grant",
+        reason: "User Self-Service feature disabled",
+      })
+    }
 
     // Connection
     plan.connection = checkDatabaseConnectionChanges(
@@ -167,12 +241,20 @@ export async function buildChangePlan(resources, domain) {
       managementClientId
     )
 
-    // Roles (admin role check makes API call to get current permissions)
-    plan.roles.admin = await checkAdminRoleChanges(
-      resources.roles,
-      domain,
-      MYORG_API_SCOPES
-    )
+    // Roles (admin role is MyOrg-specific) - only if MyOrg enabled
+    if (featureConfig.enableMyOrg) {
+      plan.roles.admin = await checkAdminRoleChanges(
+        resources.roles,
+        domain,
+        MYORG_API_SCOPES
+      )
+    } else {
+      plan.roles.admin = createChangeItem(ChangeAction.SKIP, {
+        resource: "Admin Role",
+        name: "admin",
+        reason: "Organization Management feature disabled",
+      })
+    }
     plan.roles.member = checkMemberRoleChanges(resources.roles)
 
     // Get member role ID for actions
@@ -217,6 +299,7 @@ export function displayChangePlan(plan) {
   const creates = []
   const updates = []
   const skips = []
+  const featureSkips = []
 
   // Helper to categorize changes
   function categorize(item) {
@@ -230,7 +313,14 @@ export function displayChangePlan(plan) {
       const summaryStr = item.summary ? `: ${item.summary}` : ""
       updates.push(`${item.resource}${nameStr}${summaryStr}`)
     } else if (item.action === "skip") {
-      skips.push(`${item.resource}${item.name ? ` (${item.name})` : ""}`)
+      // Distinguish between feature-disabled skips and already-configured skips
+      if (item.reason) {
+        featureSkips.push(
+          `${item.resource}${item.name ? ` (${item.name})` : ""}: ${item.reason}`
+        )
+      } else {
+        skips.push(`${item.resource}${item.name ? ` (${item.name})` : ""}`)
+      }
     }
   }
 
@@ -239,10 +329,12 @@ export function displayChangePlan(plan) {
   categorize(plan.clients.dashboard)
   categorize(plan.clientGrants.management)
   categorize(plan.clientGrants.myOrg)
+  categorize(plan.clientGrants.myAccount)
   categorize(plan.connection)
   categorize(plan.connectionProfile)
   categorize(plan.userAttributeProfile)
   categorize(plan.resourceServer)
+  categorize(plan.myAccountResourceServer)
   categorize(plan.roles.admin)
   categorize(plan.roles.member)
   categorize(plan.actions.securityPolicies)
@@ -258,6 +350,17 @@ export function displayChangePlan(plan) {
   console.log("\n" + "=".repeat(80))
   console.log("BOOTSTRAP PLAN")
   console.log("=".repeat(80))
+
+  // Show enabled features
+  if (plan.features) {
+    console.log("\n🎯 Features to configure:")
+    if (plan.features.enableMyOrg) {
+      console.log("   • Organization Management (My Organization API)")
+    }
+    if (plan.features.enableMyAccount) {
+      console.log("   • User Self-Service (My Account API)")
+    }
+  }
 
   // Check if there are no changes needed
   if (creates.length === 0 && updates.length === 0) {
@@ -282,6 +385,11 @@ export function displayChangePlan(plan) {
   if (skips.length > 0) {
     console.log("\n✓ Resources already up to date:")
     skips.forEach((item) => console.log(`   • ${item}`))
+  }
+
+  if (featureSkips.length > 0) {
+    console.log("\n⏭️  Resources skipped (feature not selected):")
+    featureSkips.forEach((item) => console.log(`   • ${item}`))
   }
 
   console.log("\n" + "=".repeat(80))
@@ -426,9 +534,11 @@ export function displayChangePlan(plan) {
     showDetails(plan.clients.dashboard, "Dashboard Client")
     showDetails(plan.clientGrants.management, "Management API Client Grant")
     showDetails(plan.clientGrants.myOrg, "My Org API Client Grant")
+    showDetails(plan.clientGrants.myAccount, "My Account API Client Grant")
     showDetails(plan.connection, "Database Connection")
     showDetails(plan.connectionProfile, "Connection Profile")
     showDetails(plan.resourceServer, "My Organization API")
+    showDetails(plan.myAccountResourceServer, "My Account API")
     showDetails(plan.roles.admin, "Admin Role")
     showDetails(plan.roles.member, "Member Role")
     showDetails(plan.tenantConfig.mfaFactors, "MFA Factors")

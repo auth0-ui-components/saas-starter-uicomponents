@@ -8,9 +8,17 @@
 
 /**
  * Create a new change plan
+ * @param {Object} featureConfig - Feature configuration { enableMyOrg, enableMyAccount }
  */
-export function createChangePlan() {
+export function createChangePlan(
+  featureConfig = { enableMyOrg: true, enableMyAccount: true }
+) {
   return {
+    // Feature configuration for conditional apply
+    features: {
+      enableMyOrg: featureConfig.enableMyOrg,
+      enableMyAccount: featureConfig.enableMyAccount,
+    },
     clients: {
       management: null,
       dashboard: null,
@@ -18,11 +26,13 @@ export function createChangePlan() {
     clientGrants: {
       management: null,
       myOrg: null,
+      myAccount: null,
     },
     connection: null,
     connectionProfile: null,
     userAttributeProfile: null,
     resourceServer: null,
+    myAccountResourceServer: null,
     roles: {
       admin: null,
       member: null,

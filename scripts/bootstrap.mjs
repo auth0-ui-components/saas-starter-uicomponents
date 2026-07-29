@@ -11,6 +11,7 @@ import {
   applyDashboardClientChanges,
   applyManagementClientChanges,
   applyManagementClientGrantChanges,
+  applyMyAccountClientGrantChanges,
   applyMyOrgClientGrantChanges,
 } from "./utils/clients.mjs"
 import {
@@ -23,9 +24,17 @@ import {
   displayChangePlan,
 } from "./utils/discovery.mjs"
 import { writeEnvFile } from "./utils/env-writer.mjs"
+import {
+  getFeatureDescription,
+  selectFeaturesInteractively,
+} from "./utils/feature-config.mjs"
 import { confirmWithUser } from "./utils/helpers.mjs"
 import { applyUserAttributeProfileChanges } from "./utils/profiles.mjs"
-import { applyMyOrgResourceServerChanges } from "./utils/resource-servers.mjs"
+import {
+  applyMyAccountResourceServerChanges,
+  applyMyOrgResourceServerChanges,
+  MYORG_API_SCOPES,
+} from "./utils/resource-servers.mjs"
 import {
   applyAdminRoleChanges,
   applyMemberRoleChanges,
@@ -40,6 +49,7 @@ import {
   checkAuth0CLI,
   checkNodeVersion,
   validateAuth0Session,
+  validateRequiredScopes,
   validateTenant,
 } from "./utils/validation.mjs"
 
@@ -82,40 +92,32 @@ async function main() {
   const domain = await validateTenant(tenantName)
   console.log("")
 
-  // Step 2: Discovery
-  console.log("🔍 Step 2: Resource Discovery")
+  // Step 2: Feature Selection
+  console.log("🎯 Step 2: Feature Selection")
+  let featureConfig = await selectFeaturesInteractively()
+  console.log(`   Selected: ${getFeatureDescription(featureConfig)}`)
+  console.log("")
+
+  // Step 3: Discovery
+  console.log("🔍 Step 3: Resource Discovery")
   const resources = await discoverExistingResources(domain)
   console.log("")
 
-  // Step 3: Build Change Plan (includes user prompts for actions)
-  console.log("📝 Step 3: Analyzing Changes")
-  const plan = await buildChangePlan(resources, domain)
+  // Step 4: Validate required scopes (with graceful degradation)
+  console.log("🔐 Step 4: Validating API Scopes")
+  featureConfig = await validateRequiredScopes(resources, domain, featureConfig)
   console.log("")
 
-  // Step 4: Display Plan
+  // Step 5: Build Change Plan (includes user prompts for actions)
+  console.log("📝 Step 5: Analyzing Changes")
+  const plan = await buildChangePlan(resources, domain, featureConfig)
+  console.log("")
+
+  // Step 6: Display Plan
   displayChangePlan(plan)
 
-  // Check if there are any changes to apply
-  const hasChanges =
-    plan.clients.management.action !== "skip" ||
-    plan.clients.dashboard.action !== "skip" ||
-    plan.clientGrants.management.action !== "skip" ||
-    plan.clientGrants.myOrg.action !== "skip" ||
-    plan.connection.action !== "skip" ||
-    plan.connectionProfile.action !== "skip" ||
-    plan.userAttributeProfile.action !== "skip" ||
-    plan.resourceServer.action !== "skip" ||
-    plan.roles.admin.action !== "skip" ||
-    plan.roles.member.action !== "skip" ||
-    plan.actions.securityPolicies.action !== "skip" ||
-    plan.actions.addDefaultRole.action !== "skip" ||
-    plan.actions.addRoleToTokens.action !== "skip" ||
-    plan.actions.bindings.action !== "skip" ||
-    plan.tenantConfig.settings.action !== "skip" ||
-    plan.tenantConfig.prompts.action !== "skip" ||
-    plan.tenantConfig.emailTemplates.action !== "skip" ||
-    plan.tenantConfig.mfaFactors.action !== "skip" ||
-    plan.branding.action !== "skip"
+  // Check if there are any changes to apply (only inspect enabled features)
+  const hasChanges = checkForChanges(plan)
 
   if (!hasChanges) {
     console.log(
@@ -134,10 +136,10 @@ async function main() {
   }
   console.log("")
 
-  // Step 6: Apply Changes
-  console.log("⚙️  Step 6: Applying Changes\n")
+  // Step 7: Apply Changes
+  console.log("⚙️  Step 7: Applying Changes\n")
 
-  // 6a. Tenant Configuration
+  // 7a. Tenant Configuration
   console.log("Configuring Tenant...")
   await applyTenantSettingsChanges(plan.tenantConfig.settings)
   await applyPromptSettingsChanges(plan.tenantConfig.prompts)
@@ -145,12 +147,12 @@ async function main() {
   await applyMFAFactorsChanges(plan.tenantConfig.mfaFactors)
   console.log("")
 
-  // 6b. Branding
+  // 7b. Branding
   console.log("Configuring Branding...")
   await applyBrandingChanges(plan.branding)
   console.log("")
 
-  // 6c. Profiles (needed for Dashboard Client)
+  // 7c. Profiles (needed for Dashboard Client)
   console.log("Configuring Profiles...")
   const connectionProfile = await applyConnectionProfileChanges(
     plan.connectionProfile
@@ -160,7 +162,7 @@ async function main() {
   )
   console.log("")
 
-  // 6d. Management Client
+  // 7d. Management Client
   console.log("Configuring Management Client...")
   const managementClient = await applyManagementClientChanges(
     plan.clients.management
@@ -172,33 +174,58 @@ async function main() {
   )
   console.log("")
 
-  // 6e. Dashboard Client
+  // 7e. Dashboard Client (feature-aware refresh-token policies + scopes)
   console.log("Configuring Dashboard Client...")
   const dashboardClient = await applyDashboardClientChanges(
     plan.clients.dashboard,
     connectionProfile.id,
-    userAttributeProfile.id
-  )
-  console.log("")
-
-  // 6f. Resource Server (My Organization API)
-  console.log("Configuring My Organization API...")
-  const myOrgResourceServer = await applyMyOrgResourceServerChanges(
-    plan.resourceServer,
-    domain
-  )
-  console.log("")
-
-  // 6g. Grant My Org API access to Dashboard Client
-  console.log("Configuring Client Grants...")
-  await applyMyOrgClientGrantChanges(
-    plan.clientGrants.myOrg,
+    userAttributeProfile.id,
     domain,
-    dashboardClient.client_id
+    featureConfig.enableMyOrg ? MYORG_API_SCOPES : [],
+    plan.myAccountApiScopes,
+    featureConfig
   )
   console.log("")
 
-  // 6h. Database Connection
+  // 7f. Resource Servers (conditionally based on enabled features)
+  let myOrgResourceServer = null
+  if (featureConfig.enableMyOrg) {
+    console.log("Configuring My Organization API...")
+    myOrgResourceServer = await applyMyOrgResourceServerChanges(
+      plan.resourceServer,
+      domain
+    )
+    console.log("")
+  }
+
+  if (featureConfig.enableMyAccount) {
+    console.log("Configuring My Account API...")
+    await applyMyAccountResourceServerChanges(
+      plan.myAccountResourceServer,
+      domain
+    )
+    console.log("")
+  }
+
+  // 7g. Grant API access to Dashboard Client (conditionally based on features)
+  console.log("Configuring Client Grants...")
+  if (featureConfig.enableMyOrg) {
+    await applyMyOrgClientGrantChanges(
+      plan.clientGrants.myOrg,
+      domain,
+      dashboardClient.client_id
+    )
+  }
+  if (featureConfig.enableMyAccount) {
+    await applyMyAccountClientGrantChanges(
+      plan.clientGrants.myAccount,
+      domain,
+      dashboardClient.client_id
+    )
+  }
+  console.log("")
+
+  // 7h. Database Connection
   console.log("Configuring Database Connection...")
   const connection = await applyDatabaseConnectionChanges(
     plan.connection,
@@ -207,13 +234,16 @@ async function main() {
   )
   console.log("")
 
-  // 6i. Roles
+  // 7i. Roles (member always; admin is My Organization-specific)
   console.log("Configuring Roles...")
-  const adminRole = await applyAdminRoleChanges(plan.roles.admin)
+  let adminRole = null
+  if (featureConfig.enableMyOrg) {
+    adminRole = await applyAdminRoleChanges(plan.roles.admin)
+  }
   const memberRole = await applyMemberRoleChanges(plan.roles.member)
   console.log("")
 
-  // 6j. Actions
+  // 7j. Actions
   console.log("Configuring Actions...")
   const securityPoliciesAction = await applySecurityPoliciesActionChanges(
     plan.actions.securityPolicies,
@@ -231,7 +261,7 @@ async function main() {
   )
   console.log("")
 
-  // 6k. Action Trigger Bindings
+  // 7k. Action Trigger Bindings
   console.log("Configuring Action Trigger Bindings...")
   await applyActionTriggerBindingsChanges(
     plan.actions.bindings,
@@ -241,18 +271,19 @@ async function main() {
   )
   console.log("")
 
-  // Step 7: Generate .env.local
-  console.log("📝 Step 7: Generating .env.local file\n")
+  // Step 8: Generate .env.local
+  console.log("📝 Step 8: Generating .env.local file\n")
   await writeEnvFile(
     domain,
     managementClient.client_id,
     managementClient.client_secret,
     dashboardClient.client_id,
     dashboardClient.client_secret,
-    myOrgResourceServer.identifier,
-    adminRole.id,
+    myOrgResourceServer?.identifier || "",
+    adminRole?.id || "",
     memberRole.id,
-    connection.id
+    connection.id,
+    featureConfig
   )
 
   // Done!
@@ -261,6 +292,53 @@ async function main() {
   console.log("  1. Review the generated .env.local file")
   console.log("  2. Run 'npm run dev' to start the development server")
   console.log("  3. Navigate to http://localhost:3000\n")
+}
+
+/**
+ * Check if there are any changes to apply based on enabled features.
+ * @param {object} plan - The change plan
+ * @returns {boolean} True if there are changes to apply
+ */
+function checkForChanges(plan) {
+  const { features } = plan
+
+  // Always check core resources
+  let hasChanges =
+    plan.clients.management.action !== "skip" ||
+    plan.clients.dashboard.action !== "skip" ||
+    plan.clientGrants.management.action !== "skip" ||
+    plan.connection.action !== "skip" ||
+    plan.connectionProfile.action !== "skip" ||
+    plan.userAttributeProfile.action !== "skip" ||
+    plan.roles.member.action !== "skip" ||
+    plan.actions.securityPolicies.action !== "skip" ||
+    plan.actions.addDefaultRole.action !== "skip" ||
+    plan.actions.addRoleToTokens.action !== "skip" ||
+    plan.actions.bindings.action !== "skip" ||
+    plan.tenantConfig.settings.action !== "skip" ||
+    plan.tenantConfig.prompts.action !== "skip" ||
+    plan.tenantConfig.emailTemplates.action !== "skip" ||
+    plan.tenantConfig.mfaFactors.action !== "skip" ||
+    plan.branding.action !== "skip"
+
+  // Check My Organization resources only if enabled
+  if (features.enableMyOrg) {
+    hasChanges =
+      hasChanges ||
+      plan.clientGrants.myOrg.action !== "skip" ||
+      plan.resourceServer.action !== "skip" ||
+      plan.roles.admin.action !== "skip"
+  }
+
+  // Check My Account resources only if enabled
+  if (features.enableMyAccount) {
+    hasChanges =
+      hasChanges ||
+      plan.clientGrants.myAccount.action !== "skip" ||
+      plan.myAccountResourceServer.action !== "skip"
+  }
+
+  return hasChanges
 }
 
 // Run the main function

@@ -3,6 +3,10 @@ import ora from "ora"
 
 import { isSessionValid } from "./auth0-api.mjs"
 import { confirmWithUser } from "./helpers.mjs"
+import {
+  MYACCOUNT_API_SCOPES_DESIRED,
+  MYORG_API_SCOPES,
+} from "./resource-servers.mjs"
 
 // Timeout for CLI commands (15 seconds)
 const CLI_TIMEOUT = 15000
@@ -117,7 +121,9 @@ export async function validateAuth0Session() {
   const postLoginValid = await isSessionValid()
   if (!postLoginValid) {
     console.error("\n❌ Session validation failed after login.")
-    console.error("   Please check your Auth0 CLI configuration and try again.\n")
+    console.error(
+      "   Please check your Auth0 CLI configuration and try again.\n"
+    )
     process.exit(1)
   }
 
@@ -260,7 +266,9 @@ export async function validateTenant(tenantName) {
 
       if (tenantAvailable) {
         // Tenant exists, offer to switch
-        console.error(`\n   The tenant "${tenantName}" is available in your CLI.`)
+        console.error(
+          `\n   The tenant "${tenantName}" is available in your CLI.`
+        )
         const shouldSwitch = await confirmWithUser(
           `Would you like to switch to ${tenantName}?`
         )
@@ -328,4 +336,152 @@ export async function validateTenant(tenantName) {
     console.error(e)
     process.exit(1)
   }
+}
+
+/**
+ * Validate that required API scopes are available on the tenant
+ * Changes from hard fail to soft warning - if API is missing, warns user and offers to continue without that feature
+ * @param {object} resources - Discovered resources from the tenant
+ * @param {string} domain - The tenant domain
+ * @param {object} featureConfig - Feature configuration { enableMyOrg, enableMyAccount }
+ * @returns {Promise<object>} Updated featureConfig after user decisions
+ */
+export async function validateRequiredScopes(resources, domain, featureConfig) {
+  const spinner = ora({
+    text: `Validating required API scopes`,
+  }).start()
+
+  const warnings = []
+  const updatedConfig = { ...featureConfig }
+
+  // Check My Organization API scopes (only if enabled)
+  if (featureConfig.enableMyOrg) {
+    const myOrgApi = resources.resourceServers.find(
+      (rs) => rs.identifier === `https://${domain}/my-org/`
+    )
+
+    if (!myOrgApi) {
+      warnings.push({
+        api: "My Organization API",
+        feature: "enableMyOrg",
+        issue: "API not found on tenant",
+        suggestion:
+          "Ensure your tenant has the My Organization feature enabled",
+        continueMessage: "Continue with User Self-Service only?",
+      })
+    } else {
+      const availableMyOrgScopes = myOrgApi.scopes?.map((s) => s.value) || []
+      const missingMyOrgScopes = MYORG_API_SCOPES.filter(
+        (scope) => !availableMyOrgScopes.includes(scope)
+      )
+      if (missingMyOrgScopes.length > 0) {
+        warnings.push({
+          api: "My Organization API",
+          feature: "enableMyOrg",
+          issue: `Missing ${missingMyOrgScopes.length} required scope(s)`,
+          missing: missingMyOrgScopes,
+          suggestion:
+            "Contact Auth0 support to enable these scopes on your tenant",
+          continueMessage: "Continue with User Self-Service only?",
+        })
+      }
+    }
+  }
+
+  // Check My Account API scopes (only if enabled)
+  if (featureConfig.enableMyAccount) {
+    const myAccountApi = resources.resourceServers.find(
+      (rs) => rs.identifier === `https://${domain}/me/`
+    )
+
+    if (!myAccountApi) {
+      warnings.push({
+        api: "My Account API",
+        feature: "enableMyAccount",
+        issue: "API not found on tenant",
+        suggestion:
+          "Ensure your tenant has the My Account feature enabled (may require beta access)",
+        continueMessage: "Continue with Organization Management only?",
+      })
+    } else {
+      const availableMyAccountScopes =
+        myAccountApi.scopes?.map((s) => s.value) || []
+      const missingMyAccountScopes = MYACCOUNT_API_SCOPES_DESIRED.filter(
+        (scope) => !availableMyAccountScopes.includes(scope)
+      )
+      if (missingMyAccountScopes.length > 0) {
+        warnings.push({
+          api: "My Account API",
+          feature: "enableMyAccount",
+          issue: `Missing ${missingMyAccountScopes.length} required MFA scope(s)`,
+          missing: missingMyAccountScopes,
+          available: availableMyAccountScopes,
+          suggestion:
+            "Contact Auth0 support to enable these scopes on your tenant",
+          continueMessage: "Continue with Organization Management only?",
+        })
+      }
+    }
+  }
+
+  // Process warnings with graceful degradation
+  if (warnings.length > 0) {
+    spinner.warn("Some API scope issues detected")
+
+    for (const warning of warnings) {
+      console.log("")
+      console.log(`⚠️  ${warning.api}`)
+      console.log(`   Issue: ${warning.issue}`)
+      if (warning.missing) {
+        console.log(`   Missing scopes:`)
+        warning.missing.forEach((scope) => console.log(`     - ${scope}`))
+      }
+      if (warning.available && warning.available.length > 0) {
+        console.log(`   Available scopes:`)
+        warning.available.forEach((scope) => console.log(`     - ${scope}`))
+      }
+      console.log(`   Suggestion: ${warning.suggestion}`)
+      console.log("")
+
+      // Check if we have another feature to fall back to
+      const canContinue =
+        (warning.feature === "enableMyOrg" && updatedConfig.enableMyAccount) ||
+        (warning.feature === "enableMyAccount" && updatedConfig.enableMyOrg)
+
+      if (canContinue) {
+        const continueWithout = await confirmWithUser(warning.continueMessage)
+        if (continueWithout) {
+          updatedConfig[warning.feature] = false
+          console.log(`   → Disabled ${warning.api} configuration`)
+        } else {
+          console.error(
+            "\n❌ Bootstrap cancelled. Please resolve the issues above before continuing.\n"
+          )
+          process.exit(1)
+        }
+      } else {
+        // No fallback available, must exit
+        console.error(
+          "\n❌ Cannot continue without at least one feature enabled."
+        )
+        console.error(
+          "   Please resolve the issues above before running the bootstrap script.\n"
+        )
+        process.exit(1)
+      }
+    }
+
+    // Verify we still have at least one feature enabled
+    if (!updatedConfig.enableMyOrg && !updatedConfig.enableMyAccount) {
+      console.error(
+        "\n❌ No features are enabled. Cannot proceed with bootstrap.\n"
+      )
+      process.exit(1)
+    }
+
+    return updatedConfig
+  }
+
+  spinner.succeed("Required API scopes are available")
+  return updatedConfig
 }
