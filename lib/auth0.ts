@@ -34,10 +34,6 @@ const MY_ACCOUNT_SCOPES = [
 ]
 
 const MY_ORG_SCOPES = [
-  "openid",
-  "profile",
-  "email",
-  "offline_access",
   "read:my_org:details",
   "update:my_org:details",
   "create:my_org:identity_providers",
@@ -68,7 +64,7 @@ const MY_ORG_SCOPES = [
   "delete:my_org:memberships",
 ]
 
-const domain = process.env.AUTH0_DOMAIN?.replace(/\/$/, "")
+const domain = process.env.NEXT_PUBLIC_AUTH0_DOMAIN?.replace(/\/$/, "")
 
 export const appClient = new Auth0Client({
   domain: process.env.NEXT_PUBLIC_AUTH0_DOMAIN,

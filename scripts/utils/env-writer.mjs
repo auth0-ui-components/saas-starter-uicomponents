@@ -38,7 +38,7 @@ AUTH0_CLIENT_SECRET='${dashboardClientSecret}'
 
 # Feature Flags - Public and exposed to the Browser
 NEXT_PUBLIC_ENABLE_ORGANIZATIONS=${enableOrganizations}
-NEXT_PUBLIC_ENABLE_MY_ACCOUNT='${enableMyAccount}'
+NEXT_PUBLIC_ENABLE_MY_ACCOUNT=${enableMyAccount}
 
 # Management API Configuration
 AUTH0_MANAGEMENT_CLIENT_ID='${managementClientId}'
