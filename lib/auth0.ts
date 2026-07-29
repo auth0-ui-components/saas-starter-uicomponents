@@ -23,17 +23,11 @@ export const onboardingClient = new Auth0Client({
   },
 })
 
-const BASE_SCOPES = "openid profile email offline_access"
-
-const MY_ACCOUNT_SCOPES = [
-  "create:me:authentication_methods",
-  "read:me:authentication_methods",
-  "update:me:authentication_methods",
-  "delete:me:authentication_methods",
-  "read:me:factors",
-]
-
 const MY_ORG_SCOPES = [
+  "openid",
+  "profile",
+  "email",
+  "offline_access",
   "read:my_org:details",
   "update:my_org:details",
   "create:my_org:identity_providers",
@@ -61,10 +55,8 @@ const MY_ORG_SCOPES = [
   "delete:my_org:member_roles",
   "create:my_org:member_roles",
   "read:my_org:members",
-  "delete:my_org:memberships",
+  "delete:my_org:memberships"
 ]
-
-const domain = process.env.NEXT_PUBLIC_AUTH0_DOMAIN?.replace(/\/$/, "")
 
 export const appClient = new Auth0Client({
   domain: process.env.NEXT_PUBLIC_AUTH0_DOMAIN,
@@ -73,11 +65,8 @@ export const appClient = new Auth0Client({
   appBaseUrl: process.env.APP_BASE_URL,
   secret: process.env.SESSION_ENCRYPTION_SECRET,
   authorizationParameters: {
-    audience: domain ? `${domain}/my-org/` : undefined,
-    scope: {
-      [`${domain}/me/`]: `${BASE_SCOPES} ${MY_ACCOUNT_SCOPES.join(" ")}`,
-      [`${domain}/my-org/`]: `${BASE_SCOPES} ${MY_ORG_SCOPES.join(" ")}`,
-    },
+    audience: `https://${process.env.NEXT_PUBLIC_AUTH0_DOMAIN}/my-org/`,
+    scope: MY_ORG_SCOPES.join(" "),
   },
   httpTimeout: 20000, // 20 seconds
   async beforeSessionSaved(session) {
