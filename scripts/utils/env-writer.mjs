@@ -6,7 +6,6 @@ import { CUSTOM_CLAIMS_NAMESPACE } from "./actions.mjs"
 /**
  * Write .env.local file with all required environment variables
  * Merges with .env.local.user if it exists
- * @param {object} featureConfig - Feature configuration { enableMyOrg, enableMyAccount }
  */
 export async function writeEnvFile(
   domain,
@@ -17,17 +16,13 @@ export async function writeEnvFile(
   myOrgResourceServerId,
   adminRoleId,
   memberRoleId,
-  connectionId,
-  featureConfig = { enableMyOrg: true, enableMyAccount: true }
+  connectionId
 ) {
   const spinner = ora({
     text: `Writing .env.local file`,
   }).start()
 
   try {
-    const enableOrganizations = featureConfig.enableMyOrg ? "true" : "false"
-    const enableMyAccount = featureConfig.enableMyAccount ? "true" : "false"
-
     // Build bootstrap-managed configuration
     const envContent = `# Auth0 Configuration (managed by bootstrap script)
 SESSION_ENCRYPTION_SECRET='${generateRandomSecret()}'
@@ -35,10 +30,6 @@ APP_BASE_URL='http://localhost:3000'
 NEXT_PUBLIC_AUTH0_DOMAIN='${domain}'
 AUTH0_CLIENT_ID='${dashboardClientId}'
 AUTH0_CLIENT_SECRET='${dashboardClientSecret}'
-
-# Feature Flags - Public and exposed to the Browser
-NEXT_PUBLIC_ENABLE_ORGANIZATIONS=${enableOrganizations}
-NEXT_PUBLIC_ENABLE_MY_ACCOUNT=${enableMyAccount}
 
 # Management API Configuration
 AUTH0_MANAGEMENT_CLIENT_ID='${managementClientId}'

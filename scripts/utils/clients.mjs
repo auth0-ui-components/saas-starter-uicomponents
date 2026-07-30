@@ -168,7 +168,6 @@ export function checkManagementClientGrantChanges(
 
 /**
  * Check if Dashboard Client needs changes
- * @param {object} featureConfig - Feature configuration { enableMyOrg, enableMyAccount }
  */
 export async function checkDashboardClientChanges(
   existingClients,
@@ -176,8 +175,7 @@ export async function checkDashboardClientChanges(
   userAttributeProfileId,
   domain,
   myOrgApiScopes = [],
-  myAccountApiScopes = [],
-  featureConfig = { enableMyOrg: true, enableMyAccount: true }
+  myAccountApiScopes = []
 ) {
   const existingClient = existingClients.find(
     (c) => c.name === DASHBOARD_CLIENT_NAME
@@ -192,7 +190,6 @@ export async function checkDashboardClientChanges(
       name: DASHBOARD_CLIENT_NAME,
       connectionProfileId,
       userAttributeProfileId,
-      featureConfig,
     })
   }
 
@@ -231,10 +228,10 @@ export async function checkDashboardClientChanges(
     clientToCheck.organization_require_behavior !== "post_login_prompt" ||
     clientToCheck.organization_usage !== "require"
 
-  // Check refresh token policies (MRRT) based on enabled features.
+  // Check refresh token policies (MRRT) for both APIs.
   let refreshTokenPoliciesNeedUpdate = false
 
-  if (featureConfig.enableMyOrg && myOrgApiScopes.length > 0) {
+  if (myOrgApiScopes.length > 0) {
     const hasMyOrgPolicy = clientToCheck.refresh_token?.policies?.some(
       (policy) =>
         policy.audience === `https://${domain}/my-org/` &&
@@ -246,7 +243,7 @@ export async function checkDashboardClientChanges(
     }
   }
 
-  if (featureConfig.enableMyAccount && myAccountApiScopes.length > 0) {
+  if (myAccountApiScopes.length > 0) {
     const hasMyAccountPolicy = clientToCheck.refresh_token?.policies?.some(
       (policy) =>
         policy.audience === `https://${domain}/me/` &&
@@ -298,7 +295,6 @@ export async function checkDashboardClientChanges(
         connectionProfileId,
         userAttributeProfileId,
       },
-      featureConfig,
       summary: changes.join(", "),
     })
   }
@@ -404,31 +400,25 @@ export function checkMyAccountClientGrantChanges(
 // ============================================================================
 
 /**
- * Build refresh token policies (MRRT) based on feature configuration.
- * Each enabled audience gets a policy so the session refresh token can mint
+ * Build refresh token policies (MRRT) for both APIs.
+ * Each audience gets a policy so the session refresh token can mint
  * tokens for that audience on demand.
  * @param {string} domain - The tenant domain
- * @param {object} featureConfig - Feature configuration { enableMyOrg, enableMyAccount }
  * @param {string[]} myOrgApiScopes - My Org API scopes
  * @param {string[]} myAccountApiScopes - My Account API scopes
  * @returns {object[]} Array of refresh token policies
  */
-function buildRefreshTokenPolicies(
-  domain,
-  featureConfig,
-  myOrgApiScopes,
-  myAccountApiScopes
-) {
+function buildRefreshTokenPolicies(domain, myOrgApiScopes, myAccountApiScopes) {
   const policies = []
 
-  if (featureConfig.enableMyOrg && myOrgApiScopes.length > 0) {
+  if (myOrgApiScopes.length > 0) {
     policies.push({
       audience: `https://${domain}/my-org/`,
       scope: myOrgApiScopes,
     })
   }
 
-  if (featureConfig.enableMyAccount && myAccountApiScopes.length > 0) {
+  if (myAccountApiScopes.length > 0) {
     policies.push({
       audience: `https://${domain}/me/`,
       scope: myAccountApiScopes,
@@ -594,7 +584,6 @@ export async function applyManagementClientGrantChanges(
 
 /**
  * Apply Dashboard Client changes
- * @param {object} featureConfig - Feature configuration { enableMyOrg, enableMyAccount }
  */
 export async function applyDashboardClientChanges(
   changePlan,
@@ -602,12 +591,8 @@ export async function applyDashboardClientChanges(
   userAttributeProfileId,
   domain,
   myOrgApiScopes = [],
-  myAccountApiScopes = [],
-  featureConfig = { enableMyOrg: true, enableMyAccount: true }
+  myAccountApiScopes = []
 ) {
-  // Use featureConfig from changePlan if available (for consistency)
-  const effectiveFeatureConfig = changePlan.featureConfig || featureConfig
-
   if (changePlan.action === ChangeAction.SKIP) {
     const spinner = ora({
       text: `${DASHBOARD_CLIENT_NAME} client is up to date`,
@@ -625,10 +610,9 @@ export async function applyDashboardClientChanges(
       const desiredCallbacks = [`${APP_BASE_URL}/auth/callback`]
       const desiredLogoutUrls = [APP_BASE_URL]
 
-      // Build refresh token policies (MRRT) based on enabled features
+      // Build refresh token policies (MRRT) for both APIs
       const refreshTokenPolicies = buildRefreshTokenPolicies(
         domain,
-        effectiveFeatureConfig,
         myOrgApiScopes,
         myAccountApiScopes
       )
@@ -769,8 +753,8 @@ export async function applyDashboardClientChanges(
         const existingPolicies = existing.refresh_token?.policies || []
         let newPolicies = [...existingPolicies]
 
-        // Handle My Org policy (only if enabled) - add/replace without dropping others
-        if (effectiveFeatureConfig.enableMyOrg && myOrgApiScopes.length > 0) {
+        // Handle My Org policy - add/replace without dropping others
+        if (myOrgApiScopes.length > 0) {
           const desiredMyOrgPolicy = {
             audience: `https://${domain}/my-org/`,
             scope: myOrgApiScopes,
@@ -792,11 +776,8 @@ export async function applyDashboardClientChanges(
           }
         }
 
-        // Handle My Account policy (only if enabled) - add/replace without dropping others
-        if (
-          effectiveFeatureConfig.enableMyAccount &&
-          myAccountApiScopes.length > 0
-        ) {
+        // Handle My Account policy - add/replace without dropping others
+        if (myAccountApiScopes.length > 0) {
           const desiredMyAccountPolicy = {
             audience: `https://${domain}/me/`,
             scope: myAccountApiScopes,
