@@ -31,9 +31,6 @@ NEXT_PUBLIC_AUTH0_DOMAIN='${domain}'
 AUTH0_CLIENT_ID='${dashboardClientId}'
 AUTH0_CLIENT_SECRET='${dashboardClientSecret}'
 
-# Organizations Configuration
-NEXT_PUBLIC_ENABLE_ORGANIZATIONS=true
-
 # Management API Configuration
 AUTH0_MANAGEMENT_CLIENT_ID='${managementClientId}'
 AUTH0_MANAGEMENT_CLIENT_SECRET='${managementClientSecret}'
