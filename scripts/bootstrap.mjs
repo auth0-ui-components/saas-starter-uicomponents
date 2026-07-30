@@ -24,10 +24,7 @@ import {
   displayChangePlan,
 } from "./utils/discovery.mjs"
 import { writeEnvFile } from "./utils/env-writer.mjs"
-import {
-  getFeatureDescription,
-  selectFeaturesInteractively,
-} from "./utils/feature-config.mjs"
+import { createFeatureConfig } from "./utils/feature-config.mjs"
 import { confirmWithUser } from "./utils/helpers.mjs"
 import { applyUserAttributeProfileChanges } from "./utils/profiles.mjs"
 import {
@@ -92,28 +89,33 @@ async function main() {
   const domain = await validateTenant(tenantName)
   console.log("")
 
-  // Step 2: Feature Selection
-  console.log("🎯 Step 2: Feature Selection")
-  let featureConfig = await selectFeaturesInteractively()
-  console.log(`   Selected: ${getFeatureDescription(featureConfig)}`)
+  // Feature: Full SaaStart Experience
+  console.log("\n" + "=".repeat(80))
+  console.log("Full SaaStart Experience")
+  console.log(
+    `Configuring both My Organization and My Account APIs for the complete SaaStart demo (organization management + user self-service MFA).`
+  )
+  console.log("=".repeat(80))
+  let featureConfig = createFeatureConfig(true, true)
   console.log("")
 
-  // Step 3: Discovery
-  console.log("🔍 Step 3: Resource Discovery")
+  // Step 2: Discovery
+  console.log("🔍 Step 2: Resource Discovery")
   const resources = await discoverExistingResources(domain)
   console.log("")
 
-  // Step 4: Validate required scopes (with graceful degradation)
-  console.log("🔐 Step 4: Validating API Scopes")
+  // Step 3: Validate required scopes (with graceful degradation)
+  console.log("🔐 Step 3: Validating API Scopes")
   featureConfig = await validateRequiredScopes(resources, domain, featureConfig)
   console.log("")
 
-  // Step 5: Build Change Plan (includes user prompts for actions)
-  console.log("📝 Step 5: Analyzing Changes")
+  // Step 4: Build Change Plan (includes user prompts for actions)
+  console.log("📝 Step 4: Analyzing Changes")
   const plan = await buildChangePlan(resources, domain, featureConfig)
   console.log("")
 
-  // Step 6: Display Plan
+  // Step 5: Display Plan
+  console.log("📝 Step 5: Display Plan")
   displayChangePlan(plan)
 
   // Check if there are any changes to apply (only inspect enabled features)
@@ -126,7 +128,8 @@ async function main() {
     process.exit(0)
   }
 
-  // Step 5: User Confirmation
+  // Step 6: User Confirmation
+  console.log("📝 Step 6: User Confirmation")
   const confirmed = await confirmWithUser(
     "Do you want to proceed with these changes? (yes/no): "
   )
@@ -272,7 +275,7 @@ async function main() {
   console.log("")
 
   // Step 8: Generate .env.local
-  console.log("📝 Step 8: Generating .env.local file\n")
+  console.log("📝 Step 9: Generating .env.local file\n")
   await writeEnvFile(
     domain,
     managementClient.client_id,

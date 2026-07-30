@@ -644,6 +644,7 @@ export async function applyDashboardClientChanges(
           initiate_login_uri: "https://example.com/auth/login",
           app_type: "regular_web",
           oidc_conformant: true,
+          is_first_party: true,
           grant_types: ["authorization_code", "refresh_token"],
           organization_require_behavior: "post_login_prompt",
           organization_usage: "require",
@@ -822,6 +823,7 @@ export async function applyDashboardClientChanges(
           rotation_type: "rotating",
           policies: newPolicies,
         }
+        updateData.is_first_party = true
       }
 
       await auth0ApiCall("patch", `clients/${existing.client_id}`, updateData)
