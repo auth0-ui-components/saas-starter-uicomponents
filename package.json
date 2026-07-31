@@ -58,5 +58,8 @@
     "prettier-plugin-tailwindcss": "^0.7.1",
     "tailwindcss": "^4.1.17",
     "typescript": "^5.9.2"
+  },
+  "overrides": {
+    "@auth0/myorganization-js": "file:./auth0-myorganization-js-1.1.0.tgz"
   }
 }
